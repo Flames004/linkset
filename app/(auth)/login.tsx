@@ -14,7 +14,7 @@ export default function LoginScreen() {
   const handleLogin = async () => {
     try {
       await signInWithEmailAndPassword(auth, email.trim(), password);
-      router.replace("/home"); // Go to home
+      router.replace("/(tabs)"); // Go to home
     } catch (error: any) {
       Alert.alert("Login failed", error.message);
     }

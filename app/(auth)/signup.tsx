@@ -13,7 +13,7 @@ export default function SignUpScreen() {
     try {
       await createUserWithEmailAndPassword(auth, email.trim(), password);
       Alert.alert('Account created');
-      router.replace('/home'); // Go to home after signup
+      router.replace("/(tabs)"); // Go to home after signup
     } catch (error: any) {
       Alert.alert('Signup failed', error.message);
     }
