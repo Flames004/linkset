@@ -1,4 +1,3 @@
-// app/(tabs)/index.tsx
 import React, { useEffect, useState } from "react";
 import {
   View,
@@ -9,6 +8,10 @@ import {
   Alert,
   TextInput,
   TouchableOpacity,
+  Linking,
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import {
   collection,
@@ -16,20 +19,20 @@ import {
   doc,
   deleteDoc,
   updateDoc,
+  addDoc,
 } from "firebase/firestore";
-import { db } from "@/services/firebase";
-import { auth } from "@/services/firebase";
-import Swipeable from "react-native-gesture-handler/Swipeable";
-import { RectButton } from "react-native-gesture-handler";
-import { addDoc } from "firebase/firestore";
+import { db, auth } from "@/services/firebase";
+import { Swipeable } from "react-native-gesture-handler";
+import { Ionicons } from "@expo/vector-icons";
 
 export default function HomeScreen() {
   const [links, setLinks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editingLinkId, setEditingLinkId] = useState<string | null>(null);
-  const [editedText, setEditedText] = useState("");
   const [newLink, setNewLink] = useState("");
   const [adding, setAdding] = useState(false);
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editedLink, setEditedLink] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   useEffect(() => {
     const uid = auth.currentUser?.uid;
@@ -54,6 +57,16 @@ export default function HomeScreen() {
     return unsubscribe;
   }, []);
 
+  const handleDelete = async (id: string) => {
+    const uid = auth.currentUser?.uid;
+    if (!uid) return;
+    try {
+      await deleteDoc(doc(db, "users", uid, "links", id));
+    } catch (error: any) {
+      Alert.alert("Delete Error", error.message);
+    }
+  };
+
   const handleAddLink = async () => {
     const uid = auth.currentUser?.uid;
     if (!uid || !newLink.trim()) return;
@@ -73,47 +86,33 @@ export default function HomeScreen() {
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const openEditModal = (id: string, url: string) => {
+    setEditingId(id);
+    setEditedLink(url);
+    setEditModalVisible(true);
+  };
+
+  const saveEdit = async () => {
+    if (!editingId || !editedLink.trim()) return;
     const uid = auth.currentUser?.uid;
     if (!uid) return;
 
     try {
-      await deleteDoc(doc(db, "users", uid, "links", id));
-    } catch (error: any) {
-      Alert.alert("Delete Error", error.message);
-    }
-  };
-
-  const handleEdit = (id: string, currentText: string) => {
-    setEditingLinkId(id);
-    setEditedText(currentText);
-  };
-
-  const saveEdit = async () => {
-    const uid = auth.currentUser?.uid;
-    if (!uid || !editingLinkId) return;
-
-    try {
-      await updateDoc(doc(db, "users", uid, "links", editingLinkId), {
-        url: editedText,
+      await updateDoc(doc(db, "users", uid, "links", editingId), {
+        url: editedLink.trim(),
       });
-      setEditingLinkId(null);
-      setEditedText("");
+      setEditModalVisible(false);
+      setEditingId(null);
+      setEditedLink("");
     } catch (error: any) {
       Alert.alert("Edit Error", error.message);
     }
   };
 
-  const renderRightActions = (item: any) => (
-    <View style={{ flexDirection: "row" }}>
-      <RectButton
-        style={styles.editButton}
-        onPress={() => handleEdit(item.id, item.url)}
-      >
-        <Text style={styles.actionText}>Edit</Text>
-      </RectButton>
-      <RectButton
-        style={styles.deleteButton}
+  const renderSwipeActions = (item: any) => ({
+    right: () => (
+      <TouchableOpacity
+        style={styles.actionButtonRight}
         onPress={() =>
           Alert.alert("Delete", "Are you sure?", [
             { text: "Cancel" },
@@ -125,105 +124,179 @@ export default function HomeScreen() {
           ])
         }
       >
-        <Text style={styles.actionText}>Delete</Text>
-      </RectButton>
-    </View>
-  );
+        <Ionicons name="trash-outline" size={24} color="#fff" />
+      </TouchableOpacity>
+    ),
+    left: () => (
+      <TouchableOpacity
+        style={styles.actionButtonLeft}
+        onPress={() => openEditModal(item.id, item.url)}
+      >
+        <Ionicons name="pencil-outline" size={24} color="#fff" />
+      </TouchableOpacity>
+    ),
+  });
 
   const renderItem = ({ item }: { item: any }) => (
-    <Swipeable renderRightActions={() => renderRightActions(item)}>
-      <View style={styles.item}>
-        {editingLinkId === item.id ? (
-          <View style={styles.editContainer}>
-            <TextInput
-              value={editedText}
-              onChangeText={setEditedText}
-              style={styles.input}
-              placeholder="Edit link"
-            />
-            <TouchableOpacity onPress={saveEdit}>
-              <Text style={styles.saveButton}>Save</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <Text style={styles.text}>{item.url}</Text>
-        )}
-      </View>
+    <Swipeable
+      renderLeftActions={renderSwipeActions(item).left}
+      renderRightActions={renderSwipeActions(item).right}
+    >
+      <TouchableOpacity
+        onPress={() => Linking.openURL(item.url)}
+        style={styles.card}
+      >
+        <Text style={styles.cardText} numberOfLines={2}>
+          {item.url}
+        </Text>
+      </TouchableOpacity>
     </Swipeable>
   );
 
   if (loading) return <ActivityIndicator size="large" style={{ flex: 1 }} />;
 
   return (
-    <View style={styles.container}>
-      <TextInput
-        placeholder="Paste a new link"
-        value={newLink}
-        onChangeText={setNewLink}
-        style={styles.input}
-      />
-      <TouchableOpacity onPress={handleAddLink} disabled={adding}>
-        <Text style={styles.saveButton}>{adding ? "Adding..." : "Add"}</Text>
-      </TouchableOpacity>
-      <FlatList
-        data={links}
-        keyExtractor={(item) => item.id}
-        renderItem={renderItem}
-        contentContainerStyle={{ paddingBottom: 50 }}
-      />
-    </View>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    >
+      <View style={styles.container}>
+        <View style={styles.addContainer}>
+          <TextInput
+            placeholder="Paste a new link"
+            value={newLink}
+            onChangeText={setNewLink}
+            style={styles.input}
+          />
+          <TouchableOpacity
+            onPress={handleAddLink}
+            style={styles.addButton}
+            disabled={adding}
+          >
+            <Text style={styles.addButtonText}>
+              {adding ? "Adding..." : "Add"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        <FlatList
+          data={links}
+          keyExtractor={(item) => item.id}
+          renderItem={renderItem}
+          contentContainerStyle={{ paddingBottom: 80 }}
+        />
+
+        <Modal visible={editModalVisible} transparent animationType="slide">
+          <View style={styles.modalBackdrop}>
+            <View style={styles.modalContainer}>
+              <Text style={styles.modalTitle}>Edit Link</Text>
+              <TextInput
+                value={editedLink}
+                onChangeText={setEditedLink}
+                style={styles.input}
+                placeholder="Update your link"
+              />
+              <View style={styles.modalActions}>
+                <TouchableOpacity onPress={() => setEditModalVisible(false)}>
+                  <Text style={{ color: "#888" }}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={saveEdit}>
+                  <Text style={{ color: "#007AFF", fontWeight: "600" }}>
+                    Save
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      </View>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff" },
-  item: {
-    padding: 16,
-    borderBottomWidth: 1,
-    borderColor: "#eee",
-    backgroundColor: "#fafafa",
-  },
-  text: {
-    fontSize: 16,
-  },
-  editContainer: {
+  container: { flex: 1, backgroundColor: "#f2f4f8" },
+
+  addContainer: {
     flexDirection: "row",
+    padding: 14,
+    backgroundColor: "#fff",
     alignItems: "center",
+    gap: 8,
+    borderBottomWidth: 1,
+    borderColor: "#ddd",
   },
   input: {
     flex: 1,
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 4,
-    padding: 8,
-    marginRight: 8,
+    backgroundColor: "#f0f0f0",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 15,
   },
-  saveButton: {
-    color: "blue",
-    fontWeight: "bold",
+  addButton: {
+    backgroundColor: "#007AFF",
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    borderRadius: 12,
   },
-  deleteButton: {
-    backgroundColor: "#ff3b30",
-    justifyContent: "center",
-    alignItems: "center",
-    width: 80,
-  },
-  editButton: {
-    backgroundColor: "#ffcc00",
-    justifyContent: "center",
-    alignItems: "center",
-    width: 80,
-  },
-  actionText: {
+  addButtonText: {
     color: "#fff",
-    fontWeight: "bold",
+    fontWeight: "600",
   },
-  addContainer: {
-    flexDirection: "row",
-    alignItems: "center",
+  card: {
+    backgroundColor: "#fff",
+    marginHorizontal: 14,
+    marginVertical: 6,
     padding: 16,
-    borderBottomWidth: 1,
-    borderColor: "#ddd",
-    backgroundColor: "#f5f5f5",
+    borderRadius: 14,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  cardText: {
+    fontSize: 16,
+    color: "#333",
+  },
+  actionButtonLeft: {
+    backgroundColor: "#FFCC00",
+    justifyContent: "center",
+    alignItems: "center",
+    width: 80,
+    marginVertical: 6,
+    borderTopLeftRadius: 14,
+    borderBottomLeftRadius: 14,
+  },
+  actionButtonRight: {
+    backgroundColor: "#FF3B30",
+    justifyContent: "center",
+    alignItems: "center",
+    width: 80,
+    marginVertical: 6,
+    borderTopRightRadius: 14,
+    borderBottomRightRadius: 14,
+  },
+  modalBackdrop: {
+    flex: 1,
+    justifyContent: "center",
+    backgroundColor: "rgba(0,0,0,0.4)",
+    paddingHorizontal: 24,
+  },
+  modalContainer: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 20,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 12,
+  },
+  modalActions: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 16,
   },
 });
