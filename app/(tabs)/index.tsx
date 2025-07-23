@@ -23,6 +23,8 @@ import {
   deleteDoc,
   updateDoc,
   addDoc,
+  query,
+  orderBy,
 } from "firebase/firestore";
 import { db, auth } from "@/services/firebase";
 import { Swipeable } from "react-native-gesture-handler";
@@ -37,9 +39,11 @@ export default function HomeScreen() {
   const [links, setLinks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [newLink, setNewLink] = useState("");
+  const [newTitle, setNewTitle] = useState(""); // Add title state
   const [adding, setAdding] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editedLink, setEditedLink] = useState("");
+  const [editedTitle, setEditedTitle] = useState(""); // Add edited title state
   const [editingId, setEditingId] = useState<string | null>(null);
 
   // Add ref to track swipeable components
@@ -49,8 +53,13 @@ export default function HomeScreen() {
     const uid = auth.currentUser?.uid;
     if (!uid) return;
 
-    const unsubscribe = onSnapshot(
+    const linksQuery = query(
       collection(db, "users", uid, "links"),
+      orderBy("updatedAt", "desc")
+    );
+
+    const unsubscribe = onSnapshot(
+      linksQuery,
       (snapshot) => {
         const items = snapshot.docs.map((doc) => ({
           id: doc.id,
@@ -85,11 +94,15 @@ export default function HomeScreen() {
     setAdding(true);
 
     try {
+      const now = new Date();
       await addDoc(collection(db, "users", uid, "links"), {
         url: newLink.trim(),
-        createdAt: new Date(),
+        title: newTitle.trim() || "Untitled Link", // Add title field
+        createdAt: now,
+        updatedAt: now,
       });
       setNewLink("");
+      setNewTitle(""); // Reset title
     } catch (error: any) {
       Alert.alert("Add Error", error.message);
     } finally {
@@ -97,9 +110,10 @@ export default function HomeScreen() {
     }
   };
 
-  const openEditModal = (id: string, url: string) => {
+  const openEditModal = (id: string, url: string, title: string) => {
     setEditingId(id);
     setEditedLink(url);
+    setEditedTitle(title || ""); // Set current title
     setEditModalVisible(true);
   };
 
@@ -111,6 +125,8 @@ export default function HomeScreen() {
     try {
       await updateDoc(doc(db, "users", uid, "links", editingId), {
         url: editedLink.trim(),
+        title: editedTitle.trim() || "Untitled Link", // Update title
+        updatedAt: new Date(),
       });
 
       // Close the swipeable component for the edited item
@@ -121,12 +137,12 @@ export default function HomeScreen() {
       setEditModalVisible(false);
       setEditingId(null);
       setEditedLink("");
+      setEditedTitle(""); // Reset edited title
     } catch (error: any) {
       Alert.alert("Edit Error", error.message);
     }
   };
 
-  // Add function to close modal and swipe
   const closeEditModal = () => {
     // Close the swipeable component for the item being edited
     if (editingId && swipeableRefs.current[editingId]) {
@@ -136,6 +152,7 @@ export default function HomeScreen() {
     setEditModalVisible(false);
     setEditingId(null);
     setEditedLink("");
+    setEditedTitle(""); // Reset edited title
   };
 
   // Updated to render left actions (delete) - minimal with icon only
@@ -234,7 +251,7 @@ export default function HomeScreen() {
         renderRightActions(
           progress,
           dragX,
-          () => openEditModal(item.id, item.url)
+          () => openEditModal(item.id, item.url, item.title)
         )
       }
       leftThreshold={40}
@@ -258,20 +275,21 @@ export default function HomeScreen() {
               { backgroundColor: theme.colors.primary + "20" },
             ]}
           >
-            <Ionicons name="link" size={16} color={theme.colors.primary} />
+            <Ionicons name="bookmark" size={16} color={theme.colors.primary} />
           </View>
           <View style={styles.linkContent}>
             <Text
-              style={[styles.linkText, { color: theme.colors.text }]}
-              numberOfLines={2}
+              style={[styles.linkTitle, { color: theme.colors.text }]}
+              numberOfLines={1}
             >
-              {item.url}
+              {item.title || "Untitled Link"}
             </Text>
             <Text
-              style={[styles.linkDate, { color: theme.colors.textSecondary }]}
+              style={[styles.linkUrl, { color: theme.colors.textSecondary }]}
+              numberOfLines={1}
+              ellipsizeMode="tail"
             >
-              {item.createdAt?.toDate?.()?.toLocaleDateString() ||
-                "Recently added"}
+              {item.url}
             </Text>
           </View>
           <Ionicons
@@ -354,7 +372,7 @@ export default function HomeScreen() {
                   { color: theme.colors.textSecondary },
                 ]}
               >
-                {links.length} {links.length === 1 ? "link" : "links"} saved
+                {links.length} saved links
               </Text>
             </View>
             <TouchableOpacity
@@ -373,7 +391,7 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Add Link Section */}
+        {/* Updated Add Section with Title Input */}
         <View
           style={[
             styles.addSection,
@@ -383,6 +401,37 @@ export default function HomeScreen() {
             },
           ]}
         >
+          {/* Title Input */}
+          <View style={styles.inputContainer}>
+            <View
+              style={[
+                styles.inputWrapper,
+                {
+                  backgroundColor: theme.colors.surface,
+                  borderColor: theme.colors.border,
+                },
+              ]}
+            >
+              <Ionicons
+                name="bookmark-outline"
+                size={18}
+                color={theme.colors.textSecondary}
+                style={styles.inputIcon}
+              />
+              <TextInput
+                value={newTitle}
+                onChangeText={setNewTitle}
+                style={[styles.input, { color: theme.colors.text }]}
+                placeholder="Title (optional)"
+                placeholderTextColor={theme.colors.textSecondary}
+                autoCapitalize="words"
+                autoCorrect={true}
+                returnKeyType="next"
+              />
+            </View>
+          </View>
+
+          {/* URL Input */}
           <View style={styles.inputContainer}>
             <View
               style={[
@@ -400,13 +449,16 @@ export default function HomeScreen() {
                 style={styles.inputIcon}
               />
               <TextInput
-                placeholder="Paste your link here..."
-                placeholderTextColor={theme.colors.textSecondary}
                 value={newLink}
                 onChangeText={setNewLink}
                 style={[styles.input, { color: theme.colors.text }]}
+                placeholder="Paste your link here"
+                placeholderTextColor={theme.colors.textSecondary}
                 autoCapitalize="none"
                 autoCorrect={false}
+                keyboardType="url"
+                returnKeyType="done"
+                onSubmitEditing={handleAddLink}
               />
             </View>
             <TouchableOpacity
@@ -448,7 +500,7 @@ export default function HomeScreen() {
           showsVerticalScrollIndicator={false}
         />
 
-        {/* Edit Modal */}
+        {/* Updated Edit Modal with Title */}
         <Modal visible={editModalVisible} transparent animationType="fade">
           <View style={styles.modalBackdrop}>
             <TouchableOpacity
@@ -478,6 +530,29 @@ export default function HomeScreen() {
                 </TouchableOpacity>
               </View>
 
+              {/* Title Input */}
+              <View
+                style={[
+                  styles.modalInputWrapper,
+                  {
+                    backgroundColor: theme.colors.surface,
+                    borderColor: theme.colors.border,
+                  },
+                ]}
+              >
+                <TextInput
+                  value={editedTitle}
+                  onChangeText={setEditedTitle}
+                  style={[styles.modalInput, { color: theme.colors.text }]}
+                  placeholder="Link title"
+                  placeholderTextColor={theme.colors.textSecondary}
+                  autoCapitalize="words"
+                  autoCorrect={true}
+                  returnKeyType="next"
+                />
+              </View>
+
+              {/* URL Input */}
               <View
                 style={[
                   styles.modalInputWrapper,
@@ -491,11 +566,10 @@ export default function HomeScreen() {
                   value={editedLink}
                   onChangeText={setEditedLink}
                   style={[styles.modalInput, { color: theme.colors.text }]}
-                  placeholder="Enter link URL"
+                  placeholder="Link URL"
                   placeholderTextColor={theme.colors.textSecondary}
                   autoCapitalize="none"
                   autoCorrect={false}
-                  autoFocus={true}
                   keyboardType="url"
                   returnKeyType="done"
                   onSubmitEditing={saveEdit}
@@ -596,6 +670,7 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: "row",
     gap: 12,
+    marginBottom: 12,
   },
   inputWrapper: {
     flex: 1,
@@ -656,19 +731,21 @@ const styles = StyleSheet.create({
   linkContent: {
     flex: 1,
   },
-  linkText: {
+  linkTitle: {
     fontSize: 16,
-    fontWeight: "500",
+    fontWeight: "600",
     lineHeight: 22,
+    marginBottom: 2,
   },
-  linkDate: {
-    fontSize: 12,
-    marginTop: 4,
+  linkUrl: {
+    fontSize: 13,
+    lineHeight: 18,
   },
 
+  // Swipe action styles
   swipeActionsContainer: {
     flexDirection: "row",
-    width: 60, // Reduced width for minimal look
+    width: 60,
     marginBottom: 12,
     justifyContent: "center",
     alignItems: "center",
@@ -681,9 +758,9 @@ const styles = StyleSheet.create({
   swipeActionButton: {
     justifyContent: "center",
     alignItems: "center",
-    width: 44, // Smaller, more minimal button
+    width: 44,
     height: 44,
-    borderRadius: 22, // Circular button
+    borderRadius: 22,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -691,10 +768,10 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   editButton: {
-    // Individual styling if needed
+    // Additional styling for edit button if needed
   },
   deleteButton: {
-    // Individual styling if needed
+    // Additional styling for delete button if needed
   },
 
   emptyContainer: {
@@ -761,7 +838,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     height: 44,
     justifyContent: "center",
-    marginBottom: 16,
+    marginBottom: 12,
   },
   modalInput: {
     fontSize: 15,
@@ -770,6 +847,7 @@ const styles = StyleSheet.create({
   modalActions: {
     flexDirection: "row",
     gap: 12,
+    marginTop: 8,
   },
   modalButton: {
     flex: 1,
@@ -788,6 +866,4 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "600",
   },
-
-  // ...rest of existing styles...
 });
