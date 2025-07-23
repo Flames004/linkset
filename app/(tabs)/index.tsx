@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   View,
   Text,
@@ -41,6 +41,9 @@ export default function HomeScreen() {
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editedLink, setEditedLink] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
+
+  // Add ref to track swipeable components
+  const swipeableRefs = useRef<{ [key: string]: any }>({});
 
   useEffect(() => {
     const uid = auth.currentUser?.uid;
@@ -109,12 +112,30 @@ export default function HomeScreen() {
       await updateDoc(doc(db, "users", uid, "links", editingId), {
         url: editedLink.trim(),
       });
+
+      // Close the swipeable component for the edited item
+      if (swipeableRefs.current[editingId]) {
+        swipeableRefs.current[editingId].close();
+      }
+
       setEditModalVisible(false);
       setEditingId(null);
       setEditedLink("");
     } catch (error: any) {
       Alert.alert("Edit Error", error.message);
     }
+  };
+
+  // Add function to close modal and swipe
+  const closeEditModal = () => {
+    // Close the swipeable component for the item being edited
+    if (editingId && swipeableRefs.current[editingId]) {
+      swipeableRefs.current[editingId].close();
+    }
+
+    setEditModalVisible(false);
+    setEditingId(null);
+    setEditedLink("");
   };
 
   // Updated to render left actions (delete) - minimal with icon only
@@ -181,9 +202,16 @@ export default function HomeScreen() {
     );
   };
 
-  // Updated renderItem with both left and right swipes
+  // Updated renderItem with ref tracking
   const renderItem = ({ item, index }: { item: any; index: number }) => (
     <Swipeable
+      ref={(ref) => {
+        if (ref) {
+          swipeableRefs.current[item.id] = ref;
+        } else {
+          delete swipeableRefs.current[item.id];
+        }
+      }}
       overshootLeft={false}
       overshootRight={false}
       renderLeftActions={(progress, dragX) =>
@@ -421,8 +449,13 @@ export default function HomeScreen() {
         />
 
         {/* Edit Modal */}
-        <Modal visible={editModalVisible} transparent animationType="slide">
+        <Modal visible={editModalVisible} transparent animationType="fade">
           <View style={styles.modalBackdrop}>
+            <TouchableOpacity
+              style={StyleSheet.absoluteFillObject}
+              activeOpacity={1}
+              onPress={closeEditModal}
+            />
             <View
               style={[
                 styles.modalContainer,
@@ -434,45 +467,44 @@ export default function HomeScreen() {
                   Edit Link
                 </Text>
                 <TouchableOpacity
-                  onPress={() => setEditModalVisible(false)}
-                  style={[
-                    styles.modalCloseButton,
-                    { backgroundColor: theme.colors.surface },
-                  ]}
+                  onPress={closeEditModal}
+                  style={styles.modalCloseButton}
                 >
-                  <Ionicons name="close" size={18} color={theme.colors.text} />
+                  <Ionicons
+                    name="close"
+                    size={16}
+                    color={theme.colors.textSecondary}
+                  />
                 </TouchableOpacity>
               </View>
 
               <View
                 style={[
-                  styles.inputWrapper,
+                  styles.modalInputWrapper,
                   {
                     backgroundColor: theme.colors.surface,
                     borderColor: theme.colors.border,
                   },
                 ]}
               >
-                <Ionicons
-                  name="link"
-                  size={18}
-                  color={theme.colors.textSecondary}
-                  style={styles.inputIcon}
-                />
                 <TextInput
                   value={editedLink}
                   onChangeText={setEditedLink}
-                  style={[styles.input, { color: theme.colors.text }]}
-                  placeholder="Update your link"
+                  style={[styles.modalInput, { color: theme.colors.text }]}
+                  placeholder="Enter link URL"
                   placeholderTextColor={theme.colors.textSecondary}
                   autoCapitalize="none"
                   autoCorrect={false}
+                  autoFocus={true}
+                  keyboardType="url"
+                  returnKeyType="done"
+                  onSubmitEditing={saveEdit}
                 />
               </View>
 
               <View style={styles.modalActions}>
                 <TouchableOpacity
-                  onPress={() => setEditModalVisible(false)}
+                  onPress={closeEditModal}
                   style={[
                     styles.modalButton,
                     styles.cancelButton,
@@ -493,10 +525,27 @@ export default function HomeScreen() {
                   style={[
                     styles.modalButton,
                     styles.saveButton,
-                    { backgroundColor: theme.colors.primary },
+                    {
+                      backgroundColor: editedLink.trim()
+                        ? theme.colors.primary
+                        : theme.colors.surface,
+                      opacity: editedLink.trim() ? 1 : 0.6,
+                    },
                   ]}
+                  disabled={!editedLink.trim()}
                 >
-                  <Text style={styles.saveButtonText}>Save</Text>
+                  <Text
+                    style={[
+                      styles.saveButtonText,
+                      {
+                        color: editedLink.trim()
+                          ? "#fff"
+                          : theme.colors.textSecondary,
+                      },
+                    ]}
+                  >
+                    Save
+                  </Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -674,41 +723,57 @@ const styles = StyleSheet.create({
   modalBackdrop: {
     flex: 1,
     justifyContent: "center",
-    backgroundColor: "rgba(0,0,0,0.5)",
-    paddingHorizontal: 20,
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.4)",
+    paddingHorizontal: 24,
   },
   modalContainer: {
-    borderRadius: 20,
-    padding: 24,
-    maxWidth: 400,
-    alignSelf: "center",
     width: "100%",
+    maxWidth: 320,
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
   },
   modalHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: 16,
   },
   modalTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "600",
   },
   modalCloseButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     justifyContent: "center",
     alignItems: "center",
+  },
+  modalInputWrapper: {
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    height: 44,
+    justifyContent: "center",
+    marginBottom: 16,
+  },
+  modalInput: {
+    fontSize: 15,
+    fontWeight: "400",
   },
   modalActions: {
     flexDirection: "row",
     gap: 12,
-    marginTop: 20,
   },
   modalButton: {
     flex: 1,
-    height: 48,
+    height: 44,
     borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
@@ -716,12 +781,13 @@ const styles = StyleSheet.create({
   cancelButton: {},
   saveButton: {},
   cancelButtonText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "500",
   },
   saveButtonText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "600",
-    color: "#fff",
   },
+
+  // ...rest of existing styles...
 });
