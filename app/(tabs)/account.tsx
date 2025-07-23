@@ -13,6 +13,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "@/context/ThemeContext";
 import { auth } from "@/services/firebase";
+import { signOut } from "firebase/auth";
+import { router } from "expo-router";
 
 export default function AccountScreen() {
   const { theme, toggleTheme, isDark } = useTheme();
@@ -24,10 +26,21 @@ export default function AccountScreen() {
       "Are you sure you want to sign out?",
       [
         { text: "Cancel", style: "cancel" },
-        { text: "Sign Out", style: "destructive", onPress: () => {
-          // TODO: Implement logout logic
-          console.log("Logout functionality will be implemented later");
-        }},
+        { 
+          text: "Sign Out", 
+          style: "destructive", 
+          onPress: async () => {
+            try {
+              await signOut(auth);
+              // The AuthContext will automatically handle navigation to login
+              // due to the onAuthStateChanged listener
+              router.replace("/(auth)/login");
+            } catch (error: any) {
+              Alert.alert("Error", "Failed to sign out. Please try again.");
+              console.error("Logout error:", error);
+            }
+          }
+        },
       ]
     );
   };
