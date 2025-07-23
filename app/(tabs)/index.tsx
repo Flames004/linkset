@@ -117,85 +117,140 @@ export default function HomeScreen() {
     }
   };
 
-  const renderSwipeActions = (item: any) => ({
-    right: (progress: Animated.AnimatedAddition<number>, dragX: Animated.AnimatedAddition<number>) => {
-      const scale = dragX.interpolate({
-        inputRange: [-100, -50, 0],
-        outputRange: [1, 0.8, 0],
-        extrapolate: 'clamp',
-      });
+  // Updated to render left actions (delete) - minimal with icon only
+  const renderLeftActions = (
+    progress: Animated.AnimatedAddition<number>,
+    dragX: Animated.AnimatedAddition<number>,
+    onDelete: () => void
+  ) => {
+    const scale = dragX.interpolate({
+      inputRange: [0, 60, 120],
+      outputRange: [0.8, 1, 1.1],
+      extrapolate: "clamp",
+    });
 
-      return (
-        <View style={styles.rightSwipeContainer}>
-          <Animated.View style={[{ transform: [{ scale }] }]}>
-            <TouchableOpacity
-              style={[styles.swipeAction, { backgroundColor: theme.colors.destructive }]}
-              onPress={() =>
-                Alert.alert("Delete Link", "This action cannot be undone.", [
-                  { text: "Cancel", style: "cancel" },
-                  {
-                    text: "Delete",
-                    style: "destructive",
-                    onPress: () => handleDelete(item.id),
-                  },
-                ])
-              }
-            >
-              <Ionicons name="trash" size={20} color="#fff" />
-              <Text style={styles.swipeActionText}>Delete</Text>
-            </TouchableOpacity>
-          </Animated.View>
-        </View>
-      );
-    },
-    left: (progress: Animated.AnimatedAddition<number>, dragX: Animated.AnimatedAddition<number>) => {
-      const scale = dragX.interpolate({
-        inputRange: [0, 50, 100],
-        outputRange: [0, 0.8, 1],
-        extrapolate: 'clamp',
-      });
+    return (
+      <View style={styles.swipeActionsContainer}>
+        <Animated.View
+          style={[styles.swipeActionWrapper, { transform: [{ scale }] }]}
+        >
+          <TouchableOpacity
+            onPress={onDelete}
+            style={[
+              styles.swipeActionButton,
+              styles.deleteButton,
+              { backgroundColor: "#FF453A" },
+            ]}
+          >
+            <Ionicons name="trash-outline" size={20} color="white" />
+          </TouchableOpacity>
+        </Animated.View>
+      </View>
+    );
+  };
 
-      return (
-        <View style={styles.leftSwipeContainer}>
-          <Animated.View style={[{ transform: [{ scale }] }]}>
-            <TouchableOpacity
-              style={[styles.swipeAction, { backgroundColor: theme.colors.warning }]}
-              onPress={() => openEditModal(item.id, item.url)}
-            >
-              <Ionicons name="pencil" size={20} color="#fff" />
-              <Text style={styles.swipeActionText}>Edit</Text>
-            </TouchableOpacity>
-          </Animated.View>
-        </View>
-      );
-    },
-  });
+  // Updated to render right actions (edit) - minimal with icon only
+  const renderRightActions = (
+    progress: Animated.AnimatedAddition<number>,
+    dragX: Animated.AnimatedAddition<number>,
+    onEdit: () => void
+  ) => {
+    const scale = dragX.interpolate({
+      inputRange: [-120, -60, 0],
+      outputRange: [1.1, 1, 0.8],
+      extrapolate: "clamp",
+    });
 
+    return (
+      <View style={styles.swipeActionsContainer}>
+        <Animated.View
+          style={[styles.swipeActionWrapper, { transform: [{ scale }] }]}
+        >
+          <TouchableOpacity
+            onPress={onEdit}
+            style={[
+              styles.swipeActionButton,
+              styles.editButton,
+              { backgroundColor: "#30D158" },
+            ]}
+          >
+            <Ionicons name="pencil" size={20} color="white" />
+          </TouchableOpacity>
+        </Animated.View>
+      </View>
+    );
+  };
+
+  // Updated renderItem with both left and right swipes
   const renderItem = ({ item, index }: { item: any; index: number }) => (
     <Swipeable
-      renderLeftActions={renderSwipeActions(item).left}
-      renderRightActions={renderSwipeActions(item).right}
-      rightThreshold={40}
+      overshootLeft={false}
+      overshootRight={false}
+      renderLeftActions={(progress, dragX) =>
+        renderLeftActions(
+          progress,
+          dragX,
+          () => {
+            Alert.alert("Delete Link", "This action cannot be undone.", [
+              { text: "Cancel", style: "cancel" },
+              {
+                text: "Delete",
+                style: "destructive",
+                onPress: () => handleDelete(item.id),
+              },
+            ]);
+          }
+        )
+      }
+      renderRightActions={(progress, dragX) =>
+        renderRightActions(
+          progress,
+          dragX,
+          () => openEditModal(item.id, item.url)
+        )
+      }
       leftThreshold={40}
+      rightThreshold={40}
     >
       <TouchableOpacity
         onPress={() => Linking.openURL(item.url)}
-        style={[styles.linkCard, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}
+        style={[
+          styles.linkCard,
+          {
+            backgroundColor: theme.colors.card,
+            borderColor: theme.colors.border,
+          },
+        ]}
         activeOpacity={0.7}
       >
         <View style={styles.linkHeader}>
-          <View style={[styles.linkIcon, { backgroundColor: theme.colors.primary + '20' }]}>
+          <View
+            style={[
+              styles.linkIcon,
+              { backgroundColor: theme.colors.primary + "20" },
+            ]}
+          >
             <Ionicons name="link" size={16} color={theme.colors.primary} />
           </View>
           <View style={styles.linkContent}>
-            <Text style={[styles.linkText, { color: theme.colors.text }]} numberOfLines={2}>
+            <Text
+              style={[styles.linkText, { color: theme.colors.text }]}
+              numberOfLines={2}
+            >
               {item.url}
             </Text>
-            <Text style={[styles.linkDate, { color: theme.colors.textSecondary }]}>
-              {item.createdAt?.toDate?.()?.toLocaleDateString() || 'Recently added'}
+            <Text
+              style={[styles.linkDate, { color: theme.colors.textSecondary }]}
+            >
+              {item.createdAt?.toDate?.()?.toLocaleDateString() ||
+                "Recently added"}
             </Text>
           </View>
-          <Ionicons name="chevron-forward" size={16} color={theme.colors.textSecondary} />
+          <Ionicons
+            name="chevron-forward"
+            size={16}
+            color={theme.colors.textSecondary}
+          />
         </View>
       </TouchableOpacity>
     </Swipeable>
@@ -203,11 +258,21 @@ export default function HomeScreen() {
 
   const EmptyState = () => (
     <View style={styles.emptyContainer}>
-      <View style={[styles.emptyIcon, { backgroundColor: theme.colors.surface }]}>
-        <Ionicons name="link-outline" size={48} color={theme.colors.textSecondary} />
+      <View
+        style={[styles.emptyIcon, { backgroundColor: theme.colors.surface }]}
+      >
+        <Ionicons
+          name="link-outline"
+          size={48}
+          color={theme.colors.textSecondary}
+        />
       </View>
-      <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>No links yet</Text>
-      <Text style={[styles.emptySubtitle, { color: theme.colors.textSecondary }]}>
+      <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>
+        No links yet
+      </Text>
+      <Text
+        style={[styles.emptySubtitle, { color: theme.colors.textSecondary }]}
+      >
         Add your first link to get started
       </Text>
     </View>
@@ -215,7 +280,12 @@ export default function HomeScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.loadingContainer, { backgroundColor: theme.colors.background }]}>
+      <View
+        style={[
+          styles.loadingContainer,
+          { backgroundColor: theme.colors.background },
+        ]}
+      >
         <ActivityIndicator size="large" color={theme.colors.primary} />
       </View>
     );
@@ -230,23 +300,41 @@ export default function HomeScreen() {
         barStyle={isDark ? "light-content" : "dark-content"}
         backgroundColor={theme.colors.background}
       />
-      
+
       <LinearGradient
-        colors={isDark ? ['#000000', '#1C1C1E'] : ['#FAFAFA', '#F2F2F7']}
+        colors={isDark ? ["#000000", "#1C1C1E"] : ["#FAFAFA", "#F2F2F7"]}
         style={styles.container}
       >
         {/* Header */}
-        <View style={[styles.header, { backgroundColor: theme.colors.card, borderBottomColor: theme.colors.border }]}>
+        <View
+          style={[
+            styles.header,
+            {
+              backgroundColor: theme.colors.card,
+              borderBottomColor: theme.colors.border,
+            },
+          ]}
+        >
           <View style={styles.headerContent}>
             <View>
-              <Text style={[styles.headerTitle, { color: theme.colors.text }]}>LinkSet</Text>
-              <Text style={[styles.headerSubtitle, { color: theme.colors.textSecondary }]}>
-                {links.length} {links.length === 1 ? 'link' : 'links'} saved
+              <Text style={[styles.headerTitle, { color: theme.colors.text }]}>
+                LinkSet
+              </Text>
+              <Text
+                style={[
+                  styles.headerSubtitle,
+                  { color: theme.colors.textSecondary },
+                ]}
+              >
+                {links.length} {links.length === 1 ? "link" : "links"} saved
               </Text>
             </View>
             <TouchableOpacity
               onPress={toggleTheme}
-              style={[styles.themeButton, { backgroundColor: theme.colors.surface }]}
+              style={[
+                styles.themeButton,
+                { backgroundColor: theme.colors.surface },
+              ]}
             >
               <Ionicons
                 name={isDark ? "sunny" : "moon"}
@@ -258,10 +346,31 @@ export default function HomeScreen() {
         </View>
 
         {/* Add Link Section */}
-        <View style={[styles.addSection, { backgroundColor: theme.colors.card, borderBottomColor: theme.colors.border }]}>
+        <View
+          style={[
+            styles.addSection,
+            {
+              backgroundColor: theme.colors.card,
+              borderBottomColor: theme.colors.border,
+            },
+          ]}
+        >
           <View style={styles.inputContainer}>
-            <View style={[styles.inputWrapper, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-              <Ionicons name="link" size={18} color={theme.colors.textSecondary} style={styles.inputIcon} />
+            <View
+              style={[
+                styles.inputWrapper,
+                {
+                  backgroundColor: theme.colors.surface,
+                  borderColor: theme.colors.border,
+                },
+              ]}
+            >
+              <Ionicons
+                name="link"
+                size={18}
+                color={theme.colors.textSecondary}
+                style={styles.inputIcon}
+              />
               <TextInput
                 placeholder="Paste your link here..."
                 placeholderTextColor={theme.colors.textSecondary}
@@ -276,17 +385,23 @@ export default function HomeScreen() {
               onPress={handleAddLink}
               style={[
                 styles.addButton,
-                { 
-                  backgroundColor: newLink.trim() ? theme.colors.primary : theme.colors.surface,
-                  opacity: adding ? 0.6 : 1 
-                }
+                {
+                  backgroundColor: newLink.trim()
+                    ? theme.colors.primary
+                    : theme.colors.surface,
+                  opacity: adding ? 0.6 : 1,
+                },
               ]}
               disabled={adding || !newLink.trim()}
             >
               {adding ? (
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
-                <Ionicons name="add" size={20} color={newLink.trim() ? "#fff" : theme.colors.textSecondary} />
+                <Ionicons
+                  name="add"
+                  size={20}
+                  color={newLink.trim() ? "#fff" : theme.colors.textSecondary}
+                />
               )}
             </TouchableOpacity>
           </View>
@@ -299,7 +414,7 @@ export default function HomeScreen() {
           renderItem={renderItem}
           contentContainerStyle={[
             styles.listContainer,
-            links.length === 0 && styles.emptyListContainer
+            links.length === 0 && styles.emptyListContainer,
           ]}
           ListEmptyComponent={EmptyState}
           showsVerticalScrollIndicator={false}
@@ -308,19 +423,42 @@ export default function HomeScreen() {
         {/* Edit Modal */}
         <Modal visible={editModalVisible} transparent animationType="slide">
           <View style={styles.modalBackdrop}>
-            <View style={[styles.modalContainer, { backgroundColor: theme.colors.card }]}>
+            <View
+              style={[
+                styles.modalContainer,
+                { backgroundColor: theme.colors.card },
+              ]}
+            >
               <View style={styles.modalHeader}>
-                <Text style={[styles.modalTitle, { color: theme.colors.text }]}>Edit Link</Text>
+                <Text style={[styles.modalTitle, { color: theme.colors.text }]}>
+                  Edit Link
+                </Text>
                 <TouchableOpacity
                   onPress={() => setEditModalVisible(false)}
-                  style={[styles.modalCloseButton, { backgroundColor: theme.colors.surface }]}
+                  style={[
+                    styles.modalCloseButton,
+                    { backgroundColor: theme.colors.surface },
+                  ]}
                 >
                   <Ionicons name="close" size={18} color={theme.colors.text} />
                 </TouchableOpacity>
               </View>
-              
-              <View style={[styles.inputWrapper, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-                <Ionicons name="link" size={18} color={theme.colors.textSecondary} style={styles.inputIcon} />
+
+              <View
+                style={[
+                  styles.inputWrapper,
+                  {
+                    backgroundColor: theme.colors.surface,
+                    borderColor: theme.colors.border,
+                  },
+                ]}
+              >
+                <Ionicons
+                  name="link"
+                  size={18}
+                  color={theme.colors.textSecondary}
+                  style={styles.inputIcon}
+                />
                 <TextInput
                   value={editedLink}
                   onChangeText={setEditedLink}
@@ -331,17 +469,32 @@ export default function HomeScreen() {
                   autoCorrect={false}
                 />
               </View>
-              
+
               <View style={styles.modalActions}>
                 <TouchableOpacity
                   onPress={() => setEditModalVisible(false)}
-                  style={[styles.modalButton, styles.cancelButton, { backgroundColor: theme.colors.surface }]}
+                  style={[
+                    styles.modalButton,
+                    styles.cancelButton,
+                    { backgroundColor: theme.colors.surface },
+                  ]}
                 >
-                  <Text style={[styles.cancelButtonText, { color: theme.colors.text }]}>Cancel</Text>
+                  <Text
+                    style={[
+                      styles.cancelButtonText,
+                      { color: theme.colors.text },
+                    ]}
+                  >
+                    Cancel
+                  </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={saveEdit}
-                  style={[styles.modalButton, styles.saveButton, { backgroundColor: theme.colors.primary }]}
+                  style={[
+                    styles.modalButton,
+                    styles.saveButton,
+                    { backgroundColor: theme.colors.primary },
+                  ]}
                 >
                   <Text style={styles.saveButtonText}>Save</Text>
                 </TouchableOpacity>
@@ -356,22 +509,22 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  
+  loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
+
   header: {
-    paddingTop: Platform.OS === 'ios' ? 50 : 20,
+    paddingTop: Platform.OS === "ios" ? 50 : 20,
     paddingBottom: 16,
     paddingHorizontal: 20,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   headerContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   headerTitle: {
     fontSize: 28,
-    fontWeight: '700',
+    fontWeight: "700",
     letterSpacing: -0.5,
   },
   headerSubtitle: {
@@ -382,8 +535,8 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
 
   addSection: {
@@ -392,13 +545,13 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   inputContainer: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 12,
   },
   inputWrapper: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     borderRadius: 12,
     borderWidth: 1,
     paddingHorizontal: 12,
@@ -410,14 +563,14 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 16,
-    height: '100%',
+    height: "100%",
   },
   addButton: {
     width: 48,
     height: 48,
     borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
 
   listContainer: {
@@ -425,30 +578,30 @@ const styles = StyleSheet.create({
   },
   emptyListContainer: {
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
-  
+
   linkCard: {
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 2,
   },
   linkHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   linkIcon: {
     width: 32,
     height: 32,
     borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: 12,
   },
   linkContent: {
@@ -456,7 +609,7 @@ const styles = StyleSheet.create({
   },
   linkText: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: "500",
     lineHeight: 22,
   },
   linkDate: {
@@ -464,84 +617,92 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
 
-  leftSwipeContainer: {
-    justifyContent: 'center',
-    paddingLeft: 20,
+  swipeActionsContainer: {
+    flexDirection: "row",
+    width: 60, // Reduced width for minimal look
+    marginBottom: 12,
+    justifyContent: "center",
+    alignItems: "center",
   },
-  rightSwipeContainer: {
-    justifyContent: 'center',
-    paddingRight: 20,
+  swipeActionWrapper: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
-  swipeAction: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: 70,
-    height: 70,
-    borderRadius: 16,
-    marginVertical: 6,
+  swipeActionButton: {
+    justifyContent: "center",
+    alignItems: "center",
+    width: 44, // Smaller, more minimal button
+    height: 44,
+    borderRadius: 22, // Circular button
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  swipeActionText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '600',
-    marginTop: 4,
+  editButton: {
+    // Individual styling if needed
+  },
+  deleteButton: {
+    // Individual styling if needed
   },
 
   emptyContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     paddingVertical: 60,
   },
   emptyIcon: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: 16,
   },
   emptyTitle: {
     fontSize: 20,
-    fontWeight: '600',
+    fontWeight: "600",
     marginBottom: 8,
   },
   emptySubtitle: {
     fontSize: 16,
-    textAlign: 'center',
+    textAlign: "center",
     lineHeight: 22,
   },
 
   modalBackdrop: {
     flex: 1,
-    justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: "center",
+    backgroundColor: "rgba(0,0,0,0.5)",
     paddingHorizontal: 20,
   },
   modalContainer: {
     borderRadius: 20,
     padding: 24,
     maxWidth: 400,
-    alignSelf: 'center',
-    width: '100%',
+    alignSelf: "center",
+    width: "100%",
   },
   modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 20,
   },
   modalTitle: {
     fontSize: 20,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   modalCloseButton: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   modalActions: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 12,
     marginTop: 20,
   },
@@ -549,18 +710,18 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 48,
     borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   cancelButton: {},
   saveButton: {},
   cancelButtonText: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   saveButtonText: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
+    fontWeight: "600",
+    color: "#fff",
   },
 });
