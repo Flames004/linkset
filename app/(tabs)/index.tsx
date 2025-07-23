@@ -12,6 +12,9 @@ import {
   Modal,
   KeyboardAvoidingView,
   Platform,
+  StatusBar,
+  Animated,
+  Dimensions,
 } from "react-native";
 import {
   collection,
@@ -24,8 +27,13 @@ import {
 import { db, auth } from "@/services/firebase";
 import { Swipeable } from "react-native-gesture-handler";
 import { Ionicons } from "@expo/vector-icons";
+import { useTheme } from "@/context/ThemeContext";
+import { LinearGradient } from "expo-linear-gradient";
+
+const { width: screenWidth } = Dimensions.get("window");
 
 export default function HomeScreen() {
+  const { theme, toggleTheme, isDark } = useTheme();
   const [links, setLinks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [newLink, setNewLink] = useState("");
@@ -110,193 +118,449 @@ export default function HomeScreen() {
   };
 
   const renderSwipeActions = (item: any) => ({
-    right: () => (
-      <TouchableOpacity
-        style={styles.actionButtonRight}
-        onPress={() =>
-          Alert.alert("Delete", "Are you sure?", [
-            { text: "Cancel" },
-            {
-              text: "Delete",
-              style: "destructive",
-              onPress: () => handleDelete(item.id),
-            },
-          ])
-        }
-      >
-        <Ionicons name="trash-outline" size={24} color="#fff" />
-      </TouchableOpacity>
-    ),
-    left: () => (
-      <TouchableOpacity
-        style={styles.actionButtonLeft}
-        onPress={() => openEditModal(item.id, item.url)}
-      >
-        <Ionicons name="pencil-outline" size={24} color="#fff" />
-      </TouchableOpacity>
-    ),
+    right: (progress: Animated.AnimatedAddition<number>, dragX: Animated.AnimatedAddition<number>) => {
+      const scale = dragX.interpolate({
+        inputRange: [-100, -50, 0],
+        outputRange: [1, 0.8, 0],
+        extrapolate: 'clamp',
+      });
+
+      return (
+        <View style={styles.rightSwipeContainer}>
+          <Animated.View style={[{ transform: [{ scale }] }]}>
+            <TouchableOpacity
+              style={[styles.swipeAction, { backgroundColor: theme.colors.destructive }]}
+              onPress={() =>
+                Alert.alert("Delete Link", "This action cannot be undone.", [
+                  { text: "Cancel", style: "cancel" },
+                  {
+                    text: "Delete",
+                    style: "destructive",
+                    onPress: () => handleDelete(item.id),
+                  },
+                ])
+              }
+            >
+              <Ionicons name="trash" size={20} color="#fff" />
+              <Text style={styles.swipeActionText}>Delete</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        </View>
+      );
+    },
+    left: (progress: Animated.AnimatedAddition<number>, dragX: Animated.AnimatedAddition<number>) => {
+      const scale = dragX.interpolate({
+        inputRange: [0, 50, 100],
+        outputRange: [0, 0.8, 1],
+        extrapolate: 'clamp',
+      });
+
+      return (
+        <View style={styles.leftSwipeContainer}>
+          <Animated.View style={[{ transform: [{ scale }] }]}>
+            <TouchableOpacity
+              style={[styles.swipeAction, { backgroundColor: theme.colors.warning }]}
+              onPress={() => openEditModal(item.id, item.url)}
+            >
+              <Ionicons name="pencil" size={20} color="#fff" />
+              <Text style={styles.swipeActionText}>Edit</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        </View>
+      );
+    },
   });
 
-  const renderItem = ({ item }: { item: any }) => (
+  const renderItem = ({ item, index }: { item: any; index: number }) => (
     <Swipeable
       renderLeftActions={renderSwipeActions(item).left}
       renderRightActions={renderSwipeActions(item).right}
+      rightThreshold={40}
+      leftThreshold={40}
     >
       <TouchableOpacity
         onPress={() => Linking.openURL(item.url)}
-        style={styles.card}
+        style={[styles.linkCard, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}
+        activeOpacity={0.7}
       >
-        <Text style={styles.cardText} numberOfLines={2}>
-          {item.url}
-        </Text>
+        <View style={styles.linkHeader}>
+          <View style={[styles.linkIcon, { backgroundColor: theme.colors.primary + '20' }]}>
+            <Ionicons name="link" size={16} color={theme.colors.primary} />
+          </View>
+          <View style={styles.linkContent}>
+            <Text style={[styles.linkText, { color: theme.colors.text }]} numberOfLines={2}>
+              {item.url}
+            </Text>
+            <Text style={[styles.linkDate, { color: theme.colors.textSecondary }]}>
+              {item.createdAt?.toDate?.()?.toLocaleDateString() || 'Recently added'}
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={16} color={theme.colors.textSecondary} />
+        </View>
       </TouchableOpacity>
     </Swipeable>
   );
 
-  if (loading) return <ActivityIndicator size="large" style={{ flex: 1 }} />;
+  const EmptyState = () => (
+    <View style={styles.emptyContainer}>
+      <View style={[styles.emptyIcon, { backgroundColor: theme.colors.surface }]}>
+        <Ionicons name="link-outline" size={48} color={theme.colors.textSecondary} />
+      </View>
+      <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>No links yet</Text>
+      <Text style={[styles.emptySubtitle, { color: theme.colors.textSecondary }]}>
+        Add your first link to get started
+      </Text>
+    </View>
+  );
+
+  if (loading) {
+    return (
+      <View style={[styles.loadingContainer, { backgroundColor: theme.colors.background }]}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <View style={styles.container}>
-        <View style={styles.addContainer}>
-          <TextInput
-            placeholder="Paste a new link"
-            value={newLink}
-            onChangeText={setNewLink}
-            style={styles.input}
-          />
-          <TouchableOpacity
-            onPress={handleAddLink}
-            style={styles.addButton}
-            disabled={adding}
-          >
-            <Text style={styles.addButtonText}>
-              {adding ? "Adding..." : "Add"}
-            </Text>
-          </TouchableOpacity>
+      <StatusBar
+        barStyle={isDark ? "light-content" : "dark-content"}
+        backgroundColor={theme.colors.background}
+      />
+      
+      <LinearGradient
+        colors={isDark ? ['#000000', '#1C1C1E'] : ['#FAFAFA', '#F2F2F7']}
+        style={styles.container}
+      >
+        {/* Header */}
+        <View style={[styles.header, { backgroundColor: theme.colors.card, borderBottomColor: theme.colors.border }]}>
+          <View style={styles.headerContent}>
+            <View>
+              <Text style={[styles.headerTitle, { color: theme.colors.text }]}>LinkSet</Text>
+              <Text style={[styles.headerSubtitle, { color: theme.colors.textSecondary }]}>
+                {links.length} {links.length === 1 ? 'link' : 'links'} saved
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={toggleTheme}
+              style={[styles.themeButton, { backgroundColor: theme.colors.surface }]}
+            >
+              <Ionicons
+                name={isDark ? "sunny" : "moon"}
+                size={20}
+                color={theme.colors.text}
+              />
+            </TouchableOpacity>
+          </View>
         </View>
 
+        {/* Add Link Section */}
+        <View style={[styles.addSection, { backgroundColor: theme.colors.card, borderBottomColor: theme.colors.border }]}>
+          <View style={styles.inputContainer}>
+            <View style={[styles.inputWrapper, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+              <Ionicons name="link" size={18} color={theme.colors.textSecondary} style={styles.inputIcon} />
+              <TextInput
+                placeholder="Paste your link here..."
+                placeholderTextColor={theme.colors.textSecondary}
+                value={newLink}
+                onChangeText={setNewLink}
+                style={[styles.input, { color: theme.colors.text }]}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </View>
+            <TouchableOpacity
+              onPress={handleAddLink}
+              style={[
+                styles.addButton,
+                { 
+                  backgroundColor: newLink.trim() ? theme.colors.primary : theme.colors.surface,
+                  opacity: adding ? 0.6 : 1 
+                }
+              ]}
+              disabled={adding || !newLink.trim()}
+            >
+              {adding ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Ionicons name="add" size={20} color={newLink.trim() ? "#fff" : theme.colors.textSecondary} />
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Links List */}
         <FlatList
           data={links}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
-          contentContainerStyle={{ paddingBottom: 80 }}
+          contentContainerStyle={[
+            styles.listContainer,
+            links.length === 0 && styles.emptyListContainer
+          ]}
+          ListEmptyComponent={EmptyState}
+          showsVerticalScrollIndicator={false}
         />
 
+        {/* Edit Modal */}
         <Modal visible={editModalVisible} transparent animationType="slide">
           <View style={styles.modalBackdrop}>
-            <View style={styles.modalContainer}>
-              <Text style={styles.modalTitle}>Edit Link</Text>
-              <TextInput
-                value={editedLink}
-                onChangeText={setEditedLink}
-                style={styles.input}
-                placeholder="Update your link"
-              />
-              <View style={styles.modalActions}>
-                <TouchableOpacity onPress={() => setEditModalVisible(false)}>
-                  <Text style={{ color: "#888" }}>Cancel</Text>
+            <View style={[styles.modalContainer, { backgroundColor: theme.colors.card }]}>
+              <View style={styles.modalHeader}>
+                <Text style={[styles.modalTitle, { color: theme.colors.text }]}>Edit Link</Text>
+                <TouchableOpacity
+                  onPress={() => setEditModalVisible(false)}
+                  style={[styles.modalCloseButton, { backgroundColor: theme.colors.surface }]}
+                >
+                  <Ionicons name="close" size={18} color={theme.colors.text} />
                 </TouchableOpacity>
-                <TouchableOpacity onPress={saveEdit}>
-                  <Text style={{ color: "#007AFF", fontWeight: "600" }}>
-                    Save
-                  </Text>
+              </View>
+              
+              <View style={[styles.inputWrapper, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+                <Ionicons name="link" size={18} color={theme.colors.textSecondary} style={styles.inputIcon} />
+                <TextInput
+                  value={editedLink}
+                  onChangeText={setEditedLink}
+                  style={[styles.input, { color: theme.colors.text }]}
+                  placeholder="Update your link"
+                  placeholderTextColor={theme.colors.textSecondary}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+              </View>
+              
+              <View style={styles.modalActions}>
+                <TouchableOpacity
+                  onPress={() => setEditModalVisible(false)}
+                  style={[styles.modalButton, styles.cancelButton, { backgroundColor: theme.colors.surface }]}
+                >
+                  <Text style={[styles.cancelButtonText, { color: theme.colors.text }]}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={saveEdit}
+                  style={[styles.modalButton, styles.saveButton, { backgroundColor: theme.colors.primary }]}
+                >
+                  <Text style={styles.saveButtonText}>Save</Text>
                 </TouchableOpacity>
               </View>
             </View>
           </View>
         </Modal>
-      </View>
+      </LinearGradient>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f2f4f8" },
+  container: { flex: 1 },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  
+  header: {
+    paddingTop: Platform.OS === 'ios' ? 50 : 20,
+    paddingBottom: 16,
+    paddingHorizontal: 20,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: '700',
+    letterSpacing: -0.5,
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    marginTop: 2,
+  },
+  themeButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
 
-  addContainer: {
-    flexDirection: "row",
-    padding: 14,
-    backgroundColor: "#fff",
-    alignItems: "center",
-    gap: 8,
-    borderBottomWidth: 1,
-    borderColor: "#ddd",
+  addSection: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  inputWrapper: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    height: 48,
+  },
+  inputIcon: {
+    marginRight: 8,
   },
   input: {
     flex: 1,
-    backgroundColor: "#f0f0f0",
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 15,
+    fontSize: 16,
+    height: '100%',
   },
   addButton: {
-    backgroundColor: "#007AFF",
-    paddingVertical: 10,
-    paddingHorizontal: 18,
+    width: 48,
+    height: 48,
     borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  addButtonText: {
-    color: "#fff",
-    fontWeight: "600",
-  },
-  card: {
-    backgroundColor: "#fff",
-    marginHorizontal: 14,
-    marginVertical: 6,
-    padding: 16,
-    borderRadius: 14,
-    elevation: 2,
-    shadowColor: "#000",
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-  },
-  cardText: {
-    fontSize: 16,
-    color: "#333",
-  },
-  actionButtonLeft: {
-    backgroundColor: "#FFCC00",
-    justifyContent: "center",
-    alignItems: "center",
-    width: 80,
-    marginVertical: 6,
-    borderTopLeftRadius: 14,
-    borderBottomLeftRadius: 14,
-  },
-  actionButtonRight: {
-    backgroundColor: "#FF3B30",
-    justifyContent: "center",
-    alignItems: "center",
-    width: 80,
-    marginVertical: 6,
-    borderTopRightRadius: 14,
-    borderBottomRightRadius: 14,
-  },
-  modalBackdrop: {
-    flex: 1,
-    justifyContent: "center",
-    backgroundColor: "rgba(0,0,0,0.4)",
-    paddingHorizontal: 24,
-  },
-  modalContainer: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
+
+  listContainer: {
     padding: 20,
   },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
+  emptyListContainer: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  
+  linkCard: {
+    borderRadius: 16,
+    padding: 16,
     marginBottom: 12,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  linkHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  linkIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  linkContent: {
+    flex: 1,
+  },
+  linkText: {
+    fontSize: 16,
+    fontWeight: '500',
+    lineHeight: 22,
+  },
+  linkDate: {
+    fontSize: 12,
+    marginTop: 4,
+  },
+
+  leftSwipeContainer: {
+    justifyContent: 'center',
+    paddingLeft: 20,
+  },
+  rightSwipeContainer: {
+    justifyContent: 'center',
+    paddingRight: 20,
+  },
+  swipeAction: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 70,
+    height: 70,
+    borderRadius: 16,
+    marginVertical: 6,
+  },
+  swipeActionText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 4,
+  },
+
+  emptyContainer: {
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  emptyIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    fontSize: 16,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+
+  modalBackdrop: {
+    flex: 1,
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    paddingHorizontal: 20,
+  },
+  modalContainer: {
+    borderRadius: 20,
+    padding: 24,
+    maxWidth: 400,
+    alignSelf: 'center',
+    width: '100%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+  },
+  modalCloseButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   modalActions: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 16,
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 20,
+  },
+  modalButton: {
+    flex: 1,
+    height: 48,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cancelButton: {},
+  saveButton: {},
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  saveButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
   },
 });
