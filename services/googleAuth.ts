@@ -1,8 +1,5 @@
 // app/services/googleAuth.ts
-import {
-  GoogleAuthProvider,
-  signInWithCredential,
-} from "firebase/auth";
+import { GoogleAuthProvider, signInWithCredential } from "firebase/auth";
 import {
   useAuthRequest,
   makeRedirectUri,

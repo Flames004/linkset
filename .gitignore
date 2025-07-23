@@ -160,3 +160,5 @@ $RECYCLE.BIN/
 *.temp
 .tmp/
 .temp/
+
+tasks.txt
