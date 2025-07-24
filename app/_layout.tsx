@@ -1,7 +1,7 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from "@react-navigation/native";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { AuthProvider } from "../context/AuthContext";
+import { AuthProvider } from "@/context/AuthContext";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { StyleSheet } from "react-native";
 import { ThemeProvider as CustomThemeProvider } from "@/context/ThemeContext";
@@ -34,7 +34,12 @@ export default function Layout() {
         <StatusBar style="dark" />
         <CustomThemeProvider>
           <ThemeProvider value={DefaultTheme}>
-            <Stack screenOptions={{ headerShown: false }} />
+            <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="index" />
+              <Stack.Screen name="welcome" />
+              <Stack.Screen name="(auth)" />
+              <Stack.Screen name="(tabs)" />
+            </Stack>
           </ThemeProvider>
         </CustomThemeProvider>
       </AuthProvider>

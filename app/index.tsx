@@ -1,30 +1,34 @@
-// app/index.tsx
-import { View, Text, Button, StyleSheet } from 'react-native';
-import { useContext } from 'react';
+// app/index.tsx (new file)
+import React, { useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
-import { auth } from '../services/firebase';
-import { Redirect, router } from 'expo-router';
+import { Redirect } from 'expo-router';
+import { View, ActivityIndicator } from 'react-native';
+import { useTheme } from '@/context/ThemeContext';
 
-export default function HomeScreen() {
+export default function RootIndex() {
   const { user, loading } = useContext(AuthContext);
+  const { theme } = useTheme();
 
-  if (loading) return null;
-  if (!user) return <Redirect href="/login" />;
+  // Show loading spinner while checking auth
+  if (loading) {
+    return (
+      <View 
+        style={{ 
+          flex: 1, 
+          justifyContent: 'center', 
+          alignItems: 'center',
+          backgroundColor: theme.colors.background 
+        }}
+      >
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      </View>
+    );
+  }
 
-  const handleLogout = async () => {
-    await auth.signOut();
-    router.replace('/login');
-  };
-
-  return (
-    <View style={styles.container}>
-      <Text style={styles.text}>Welcome to LinkSet 🔗</Text>
-      <Button title="Logout" onPress={handleLogout} />
-    </View>
-  );
+  // Redirect based on auth status
+  if (user) {
+    return <Redirect href="/(tabs)" />;
+  } else {
+    return <Redirect href="/welcome" />;
+  }
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  text: { fontSize: 20, marginBottom: 20 },
-});
