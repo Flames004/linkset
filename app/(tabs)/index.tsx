@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useMemo } from "react";
 import {
   View,
   Text,
@@ -15,6 +15,7 @@ import {
   StatusBar,
   Animated,
   Dimensions,
+  ScrollView,
 } from "react-native";
 import {
   collection,
@@ -31,6 +32,7 @@ import { Swipeable } from "react-native-gesture-handler";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "@/context/ThemeContext";
 import { LinearGradient } from "expo-linear-gradient";
+import { Picker } from "@react-native-picker/picker";
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -45,6 +47,9 @@ export default function HomeScreen() {
   const [editedLink, setEditedLink] = useState("");
   const [editedTitle, setEditedTitle] = useState(""); // Add edited title state
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [filterCategory, setFilterCategory] = useState("all");
 
   // Add ref to track swipeable components
   const swipeableRefs = useRef<{ [key: string]: any }>({});
@@ -77,6 +82,26 @@ export default function HomeScreen() {
     return unsubscribe;
   }, []);
 
+  useEffect(() => {
+    const uid = auth.currentUser?.uid;
+    if (!uid) return;
+
+    const categoriesQuery = query(
+      collection(db, "users", uid, "categories"),
+      orderBy("createdAt", "desc")
+    );
+
+    const unsubscribe = onSnapshot(categoriesQuery, (snapshot) => {
+      const items = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setCategories(items);
+    });
+
+    return unsubscribe;
+  }, []);
+
   const handleDelete = async (id: string) => {
     const uid = auth.currentUser?.uid;
     if (!uid) return;
@@ -97,12 +122,14 @@ export default function HomeScreen() {
       const now = new Date();
       await addDoc(collection(db, "users", uid, "links"), {
         url: newLink.trim(),
-        title: newTitle.trim() || "Untitled Link", // Add title field
+        title: newTitle.trim() || "Untitled Link",
+        categoryId: selectedCategory || null,
         createdAt: now,
         updatedAt: now,
       });
       setNewLink("");
-      setNewTitle(""); // Reset title
+      setNewTitle("");
+      setSelectedCategory(""); // Reset category
     } catch (error: any) {
       Alert.alert("Add Error", error.message);
     } finally {
@@ -154,6 +181,15 @@ export default function HomeScreen() {
     setEditedLink("");
     setEditedTitle(""); // Reset edited title
   };
+
+  // Filter links by category
+  const filteredLinks = useMemo(() => {
+    if (filterCategory === "all") return links;
+    if (filterCategory === "uncategorized") {
+      return links.filter((link) => !link.categoryId);
+    }
+    return links.filter((link) => link.categoryId === filterCategory);
+  }, [links, filterCategory]);
 
   // Updated to render left actions (delete) - minimal with icon only
   const renderLeftActions = (
@@ -220,87 +256,109 @@ export default function HomeScreen() {
   };
 
   // Updated renderItem with ref tracking
-  const renderItem = ({ item, index }: { item: any; index: number }) => (
-    <Swipeable
-      ref={(ref) => {
-        if (ref) {
-          swipeableRefs.current[item.id] = ref;
-        } else {
-          delete swipeableRefs.current[item.id];
-        }
-      }}
-      overshootLeft={false}
-      overshootRight={false}
-      renderLeftActions={(progress, dragX) =>
-        renderLeftActions(
-          progress,
-          dragX,
-          () => {
-            Alert.alert("Delete Link", "This action cannot be undone.", [
-              { text: "Cancel", style: "cancel" },
-              {
-                text: "Delete",
-                style: "destructive",
-                onPress: () => handleDelete(item.id),
-              },
-            ]);
+  const renderItem = ({ item, index }: { item: any; index: number }) => {
+    const category = categories.find((cat) => cat.id === item.categoryId);
+
+    return (
+      <Swipeable
+        ref={(ref) => {
+          if (ref) {
+            swipeableRefs.current[item.id] = ref;
+          } else {
+            delete swipeableRefs.current[item.id];
           }
-        )
-      }
-      renderRightActions={(progress, dragX) =>
-        renderRightActions(
-          progress,
-          dragX,
-          () => openEditModal(item.id, item.url, item.title)
-        )
-      }
-      leftThreshold={40}
-      rightThreshold={40}
-    >
-      <TouchableOpacity
-        onPress={() => Linking.openURL(item.url)}
-        style={[
-          styles.linkCard,
-          {
-            backgroundColor: theme.colors.card,
-            borderColor: theme.colors.border,
-          },
-        ]}
-        activeOpacity={0.7}
+        }}
+        overshootLeft={false}
+        overshootRight={false}
+        renderLeftActions={(progress, dragX) =>
+          renderLeftActions(
+            progress,
+            dragX,
+            () => {
+              Alert.alert("Delete Link", "This action cannot be undone.", [
+                { text: "Cancel", style: "cancel" },
+                {
+                  text: "Delete",
+                  style: "destructive",
+                  onPress: () => handleDelete(item.id),
+                },
+              ]);
+            }
+          )
+        }
+        renderRightActions={(progress, dragX) =>
+          renderRightActions(
+            progress,
+            dragX,
+            () => openEditModal(item.id, item.url, item.title)
+          )
+        }
+        leftThreshold={40}
+        rightThreshold={40}
       >
-        <View style={styles.linkHeader}>
-          <View
-            style={[
-              styles.linkIcon,
-              { backgroundColor: theme.colors.primary + "20" },
-            ]}
-          >
-            <Ionicons name="bookmark" size={16} color={theme.colors.primary} />
-          </View>
-          <View style={styles.linkContent}>
-            <Text
-              style={[styles.linkTitle, { color: theme.colors.text }]}
-              numberOfLines={1}
+        <TouchableOpacity
+          onPress={() => Linking.openURL(item.url)}
+          style={[
+            styles.linkCard,
+            {
+              backgroundColor: theme.colors.card,
+              borderColor: theme.colors.border,
+              borderLeftWidth: category ? 4 : 1,
+              borderLeftColor: category?.color || theme.colors.border,
+            },
+          ]}
+          activeOpacity={0.7}
+        >
+          <View style={styles.linkHeader}>
+            <View
+              style={[
+                styles.linkIcon,
+                { backgroundColor: (category?.color || theme.colors.primary) + "20" },
+              ]}
             >
-              {item.title || "Untitled Link"}
-            </Text>
-            <Text
-              style={[styles.linkUrl, { color: theme.colors.textSecondary }]}
-              numberOfLines={1}
-              ellipsizeMode="tail"
-            >
-              {item.url}
-            </Text>
+              <Ionicons
+                name={category?.icon || "bookmark"}
+                size={16}
+                color={category?.color || theme.colors.primary}
+              />
+            </View>
+            <View style={styles.linkContent}>
+              <Text
+                style={[styles.linkTitle, { color: theme.colors.text }]}
+                numberOfLines={1}
+              >
+                {item.title || "Untitled Link"}
+              </Text>
+              <Text
+                style={[styles.linkUrl, { color: theme.colors.textSecondary }]}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                {item.url}
+              </Text>
+              {category && (
+                <View style={styles.categoryTag}>
+                  <Text
+                    style={[
+                      styles.categoryTagText,
+                      { color: category.color },
+                    ]}
+                  >
+                    {category.name}
+                  </Text>
+                </View>
+              )}
+            </View>
+            <Ionicons
+              name="chevron-forward"
+              size={16}
+              color={theme.colors.textSecondary}
+            />
           </View>
-          <Ionicons
-            name="chevron-forward"
-            size={16}
-            color={theme.colors.textSecondary}
-          />
-        </View>
-      </TouchableOpacity>
-    </Swipeable>
-  );
+        </TouchableOpacity>
+      </Swipeable>
+    );
+  };
 
   const EmptyState = () => (
     <View style={styles.emptyContainer}>
@@ -389,6 +447,115 @@ export default function HomeScreen() {
               />
             </TouchableOpacity>
           </View>
+        </View>
+
+        {/* Category Filter */}
+        <View
+          style={[
+            styles.filterSection,
+            {
+              backgroundColor: theme.colors.card,
+              borderBottomColor: theme.colors.border,
+            },
+          ]}
+        >
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View style={styles.filterRow}>
+              <TouchableOpacity
+                style={[
+                  styles.filterChip,
+                  {
+                    backgroundColor:
+                      filterCategory === "all"
+                        ? theme.colors.primary
+                        : theme.colors.surface,
+                  },
+                ]}
+                onPress={() => setFilterCategory("all")}
+              >
+                <Text
+                  style={[
+                    styles.filterChipText,
+                    {
+                      color:
+                        filterCategory === "all"
+                          ? "white"
+                          : theme.colors.text,
+                    },
+                  ]}
+                >
+                  All
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.filterChip,
+                  {
+                    backgroundColor:
+                      filterCategory === "uncategorized"
+                        ? theme.colors.primary
+                        : theme.colors.surface,
+                  },
+                ]}
+                onPress={() => setFilterCategory("uncategorized")}
+              >
+                <Text
+                  style={[
+                    styles.filterChipText,
+                    {
+                      color:
+                        filterCategory === "uncategorized"
+                          ? "white"
+                          : theme.colors.text,
+                    },
+                  ]}
+                >
+                  Uncategorized
+                </Text>
+              </TouchableOpacity>
+
+              {categories.map((category) => (
+                <TouchableOpacity
+                  key={category.id}
+                  style={[
+                    styles.filterChip,
+                    {
+                      backgroundColor:
+                        filterCategory === category.id
+                          ? category.color
+                          : theme.colors.surface,
+                      borderColor: category.color,
+                      borderWidth: 1,
+                    },
+                  ]}
+                  onPress={() => setFilterCategory(category.id)}
+                >
+                  <Ionicons
+                    name={category.icon}
+                    size={14}
+                    color={
+                      filterCategory === category.id ? "white" : category.color
+                    }
+                    style={{ marginRight: 4 }}
+                  />
+                  <Text
+                    style={[
+                      styles.filterChipText,
+                      {
+                        color:
+                          filterCategory === category.id
+                            ? "white"
+                            : theme.colors.text,
+                      },
+                    ]}
+                  >
+                    {category.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </ScrollView>
         </View>
 
         {/* Updated Add Section with Title Input */}
@@ -485,11 +652,45 @@ export default function HomeScreen() {
               )}
             </TouchableOpacity>
           </View>
+
+          {/* Category Selector */}
+          <View style={styles.inputContainer}>
+            <View
+              style={[
+                styles.inputWrapper,
+                {
+                  backgroundColor: theme.colors.surface,
+                  borderColor: theme.colors.border,
+                },
+              ]}
+            >
+              <Ionicons
+                name="folder-outline"
+                size={18}
+                color={theme.colors.textSecondary}
+                style={styles.inputIcon}
+              />
+              <Picker
+                selectedValue={selectedCategory}
+                onValueChange={setSelectedCategory}
+                style={[styles.picker, { color: theme.colors.text }]}
+              >
+                <Picker.Item label="No Category" value="" />
+                {categories.map((category) => (
+                  <Picker.Item
+                    key={category.id}
+                    label={category.name}
+                    value={category.id}
+                  />
+                ))}
+              </Picker>
+            </View>
+          </View>
         </View>
 
         {/* Links List */}
         <FlatList
-          data={links}
+          data={filteredLinks}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
           contentContainerStyle={[
@@ -741,6 +942,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
   },
+  categoryTag: {
+    marginTop: 4,
+  },
+  categoryTagText: {
+    fontSize: 12,
+    fontWeight: "500",
+  },
 
   // Swipe action styles
   swipeActionsContainer: {
@@ -865,5 +1073,30 @@ const styles = StyleSheet.create({
   saveButtonText: {
     fontSize: 15,
     fontWeight: "600",
+  },
+
+  filterSection: {
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  filterRow: {
+    flexDirection: "row",
+    gap: 8,
+    paddingHorizontal: 20,
+  },
+  filterChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  filterChipText: {
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  picker: {
+    flex: 1,
+    height: 48,
   },
 });
