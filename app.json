@@ -28,10 +28,9 @@
       "favicon": "./assets/favicon.png"
     },
     "scheme": "linkset",
-  "platforms": ["ios", "android", "web"],
+    "platforms": ["ios", "android", "web"],
     "plugins": [
       "expo-web-browser"
     ]
-    
   }
 }

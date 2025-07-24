@@ -61,9 +61,12 @@ export default function SignUpScreen() {
 
   const handleGoogleSignUp = async () => {
     try {
+      setLoading(true);
       await promptAsync();
     } catch (error: any) {
       Alert.alert("Google Sign-up failed", error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -88,13 +91,24 @@ export default function SignUpScreen() {
         >
           {/* Header */}
           <View style={styles.header}>
-            <View style={[styles.logoContainer, { backgroundColor: theme.colors.primary + "20" }]}>
-              <Ionicons name="person-add" size={32} color={theme.colors.primary} />
+            <View
+              style={[
+                styles.logoContainer,
+                { backgroundColor: theme.colors.primary + "20" },
+              ]}
+            >
+              <Ionicons
+                name="person-add"
+                size={32}
+                color={theme.colors.primary}
+              />
             </View>
             <Text style={[styles.title, { color: theme.colors.text }]}>
               Create Account
             </Text>
-            <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>
+            <Text
+              style={[styles.subtitle, { color: theme.colors.textSecondary }]}
+            >
               Join LinkSet to start saving your links
             </Text>
           </View>
@@ -208,7 +222,9 @@ export default function SignUpScreen() {
                   style={styles.eyeIcon}
                 >
                   <Ionicons
-                    name={showConfirmPassword ? "eye-outline" : "eye-off-outline"}
+                    name={
+                      showConfirmPassword ? "eye-outline" : "eye-off-outline"
+                    }
                     size={20}
                     color={theme.colors.textSecondary}
                   />
@@ -218,7 +234,12 @@ export default function SignUpScreen() {
 
             {/* Password Requirements */}
             <View style={styles.requirementsContainer}>
-              <Text style={[styles.requirementsText, { color: theme.colors.textSecondary }]}>
+              <Text
+                style={[
+                  styles.requirementsText,
+                  { color: theme.colors.textSecondary },
+                ]}
+              >
                 Password must be at least 6 characters long
               </Text>
             </View>
@@ -244,11 +265,26 @@ export default function SignUpScreen() {
 
             {/* Divider */}
             <View style={styles.dividerContainer}>
-              <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
-              <Text style={[styles.dividerText, { color: theme.colors.textSecondary }]}>
+              <View
+                style={[
+                  styles.divider,
+                  { backgroundColor: theme.colors.border },
+                ]}
+              />
+              <Text
+                style={[
+                  styles.dividerText,
+                  { color: theme.colors.textSecondary },
+                ]}
+              >
                 or
               </Text>
-              <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
+              <View
+                style={[
+                  styles.divider,
+                  { backgroundColor: theme.colors.border },
+                ]}
+              />
             </View>
 
             {/* Google Sign Up */}
@@ -264,7 +300,9 @@ export default function SignUpScreen() {
               disabled={!request}
             >
               <Ionicons name="logo-google" size={20} color="#4285F4" />
-              <Text style={[styles.googleButtonText, { color: theme.colors.text }]}>
+              <Text
+                style={[styles.googleButtonText, { color: theme.colors.text }]}
+              >
                 Continue with Google
               </Text>
             </TouchableOpacity>
@@ -273,9 +311,16 @@ export default function SignUpScreen() {
           {/* Footer */}
           <View style={styles.footer}>
             <TouchableOpacity onPress={() => router.push("/login")}>
-              <Text style={[styles.footerText, { color: theme.colors.textSecondary }]}>
+              <Text
+                style={[
+                  styles.footerText,
+                  { color: theme.colors.textSecondary },
+                ]}
+              >
                 Already have an account?{" "}
-                <Text style={[styles.footerLink, { color: theme.colors.primary }]}>
+                <Text
+                  style={[styles.footerLink, { color: theme.colors.primary }]}
+                >
                   Sign in
                 </Text>
               </Text>
@@ -286,6 +331,8 @@ export default function SignUpScreen() {
     </KeyboardAvoidingView>
   );
 }
+
+// Make sure this is the only default export
 
 const styles = StyleSheet.create({
   container: {

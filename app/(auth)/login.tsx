@@ -49,8 +49,9 @@ export default function LoginScreen() {
   const handleGoogleLogin = async () => {
     try {
       await promptAsync();
-    } catch (error: any) {
-      Alert.alert("Google Sign-in failed", error.message);
+      // Navigation will be handled by AuthContext
+    } catch (error) {
+      // Error is already handled in the auth service
     }
   };
 
@@ -75,13 +76,20 @@ export default function LoginScreen() {
         >
           {/* Header */}
           <View style={styles.header}>
-            <View style={[styles.logoContainer, { backgroundColor: theme.colors.primary + "20" }]}>
+            <View
+              style={[
+                styles.logoContainer,
+                { backgroundColor: theme.colors.primary + "20" },
+              ]}
+            >
               <Ionicons name="link" size={32} color={theme.colors.primary} />
             </View>
             <Text style={[styles.title, { color: theme.colors.text }]}>
               Welcome to LinkSet
             </Text>
-            <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>
+            <Text
+              style={[styles.subtitle, { color: theme.colors.textSecondary }]}
+            >
               Sign in to access your saved links
             </Text>
           </View>
@@ -183,11 +191,26 @@ export default function LoginScreen() {
 
             {/* Divider */}
             <View style={styles.dividerContainer}>
-              <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
-              <Text style={[styles.dividerText, { color: theme.colors.textSecondary }]}>
+              <View
+                style={[
+                  styles.divider,
+                  { backgroundColor: theme.colors.border },
+                ]}
+              />
+              <Text
+                style={[
+                  styles.dividerText,
+                  { color: theme.colors.textSecondary },
+                ]}
+              >
                 or
               </Text>
-              <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
+              <View
+                style={[
+                  styles.divider,
+                  { backgroundColor: theme.colors.border },
+                ]}
+              />
             </View>
 
             {/* Google Sign In */}
@@ -203,7 +226,9 @@ export default function LoginScreen() {
               disabled={!request}
             >
               <Ionicons name="logo-google" size={20} color="#4285F4" />
-              <Text style={[styles.googleButtonText, { color: theme.colors.text }]}>
+              <Text
+                style={[styles.googleButtonText, { color: theme.colors.text }]}
+              >
                 Continue with Google
               </Text>
             </TouchableOpacity>
@@ -212,9 +237,16 @@ export default function LoginScreen() {
           {/* Footer */}
           <View style={styles.footer}>
             <TouchableOpacity onPress={() => router.push("/signup")}>
-              <Text style={[styles.footerText, { color: theme.colors.textSecondary }]}>
+              <Text
+                style={[
+                  styles.footerText,
+                  { color: theme.colors.textSecondary },
+                ]}
+              >
                 Don't have an account?{" "}
-                <Text style={[styles.footerLink, { color: theme.colors.primary }]}>
+                <Text
+                  style={[styles.footerLink, { color: theme.colors.primary }]}
+                >
                   Sign up
                 </Text>
               </Text>
