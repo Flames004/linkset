@@ -49,7 +49,11 @@ const CATEGORY_COLORS = [
 
 const CATEGORY_ICONS = [
   "folder", "bookmark", "star", "heart", "briefcase", 
-  "school", "home", "car", "restaurant", "game-controller"
+  "school", "home", "car", "restaurant", "game-controller",
+  "library", "fitness", "musical-notes", "camera", "gift",
+  "airplane", "medical", "leaf", "bulb", "trophy",
+  "shield", "code", "wallet", "map", "time",
+  "build", "notifications", "person", "call", "mail"
 ];
 
 export default function CategoriesScreen() {
@@ -71,17 +75,36 @@ export default function CategoriesScreen() {
       orderBy("createdAt", "desc")
     );
 
-    const unsubscribe = onSnapshot(categoriesQuery, (snapshot) => {
-      const items = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate() || new Date(),
-      })) as Category[];
-      setCategories(items);
-      setLoading(false);
+    const linksQuery = query(
+      collection(db, "users", uid, "links")
+    );
+
+    // Listen to categories
+    const unsubscribeCategories = onSnapshot(categoriesQuery, (categoriesSnapshot) => {
+      // Listen to links to count them
+      const unsubscribeLinks = onSnapshot(linksQuery, (linksSnapshot) => {
+        const links = linksSnapshot.docs.map(doc => doc.data());
+        
+        const categoriesWithCount = categoriesSnapshot.docs.map((doc) => {
+          const categoryData = doc.data();
+          const linkCount = links.filter(link => link.categoryId === doc.id).length;
+          
+          return {
+            id: doc.id,
+            ...categoryData,
+            createdAt: categoryData.createdAt?.toDate() || new Date(),
+            linkCount,
+          };
+        }) as Category[];
+        
+        setCategories(categoriesWithCount);
+        setLoading(false);
+      });
+
+      return () => unsubscribeLinks();
     });
 
-    return unsubscribe;
+    return unsubscribeCategories;
   }, []);
 
   const handleSaveCategory = async () => {

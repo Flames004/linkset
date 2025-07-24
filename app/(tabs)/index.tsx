@@ -36,22 +36,177 @@ import { Picker } from "@react-native-picker/picker";
 
 const { width: screenWidth } = Dimensions.get("window");
 
+// CategorySelector Component - moved to proper location
+const CategorySelector = ({
+  categories,
+  selectedCategory,
+  onCategoryChange,
+  theme,
+}: {
+  categories: any[];
+  selectedCategory: string;
+  onCategoryChange: (categoryId: string) => void;
+  theme: any;
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  const selectedCat = categories.find(
+    (cat: any) => cat.id === selectedCategory
+  );
+
+  return (
+    <View style={categoryStyles.container}>
+      <TouchableOpacity
+        style={[
+          categoryStyles.button,
+          {
+            backgroundColor: theme.colors.surface,
+            borderColor: theme.colors.border,
+          },
+        ]}
+        onPress={() => setIsOpen(!isOpen)}
+        activeOpacity={0.7}
+      >
+        <View style={categoryStyles.content}>
+          {selectedCat ? (
+            <>
+              <View
+                style={[
+                  categoryStyles.miniIcon,
+                  { backgroundColor: selectedCat.color + "20" },
+                ]}
+              >
+                <Ionicons
+                  name={selectedCat.icon}
+                  size={12}
+                  color={selectedCat.color}
+                />
+              </View>
+              <Text
+                style={[
+                  categoryStyles.text,
+                  { color: theme.colors.text },
+                ]}
+                numberOfLines={1}
+              >
+                {selectedCat.name}
+              </Text>
+            </>
+          ) : (
+            <>
+              <Ionicons
+                name="folder-outline"
+                size={14}
+                color={theme.colors.textSecondary}
+              />
+              <Text
+                style={[
+                  categoryStyles.text,
+                  { color: theme.colors.textSecondary },
+                ]}
+              >
+                Category
+              </Text>
+            </>
+          )}
+        </View>
+        <Ionicons
+          name={isOpen ? "chevron-up" : "chevron-down"}
+          size={14}
+          color={theme.colors.textSecondary}
+        />
+      </TouchableOpacity>
+
+      {isOpen && (
+        <View
+          style={[
+            categoryStyles.dropdown,
+            {
+              backgroundColor: theme.colors.card,
+              borderColor: theme.colors.border,
+            },
+          ]}
+        >
+          <ScrollView
+            style={categoryStyles.dropdownScroll}
+            showsVerticalScrollIndicator={false}
+            bounces={false}
+          >
+            <TouchableOpacity
+              style={categoryStyles.option}
+              onPress={() => {
+                onCategoryChange("");
+                setIsOpen(false);
+              }}
+            >
+              <Ionicons
+                name="close-circle-outline"
+                size={16}
+                color={theme.colors.textSecondary}
+              />
+              <Text
+                style={[
+                  categoryStyles.optionText,
+                  { color: theme.colors.text },
+                ]}
+              >
+                No Category
+              </Text>
+            </TouchableOpacity>
+
+            {categories.map((category: any) => (
+              <TouchableOpacity
+                key={category.id}
+                style={categoryStyles.option}
+                onPress={() => {
+                  onCategoryChange(category.id);
+                  setIsOpen(false);
+                }}
+              >
+                <View
+                  style={[
+                    categoryStyles.miniIcon,
+                    { backgroundColor: category.color + "20" },
+                  ]}
+                >
+                  <Ionicons
+                    name={category.icon}
+                    size={12}
+                    color={category.color}
+                  />
+                </View>
+                <Text
+                  style={[
+                    categoryStyles.optionText,
+                    { color: theme.colors.text },
+                  ]}
+                >
+                  {category.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+    </View>
+  );
+};
+
 export default function HomeScreen() {
   const { theme, toggleTheme, isDark } = useTheme();
   const [links, setLinks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [newLink, setNewLink] = useState("");
-  const [newTitle, setNewTitle] = useState(""); // Add title state
+  const [newTitle, setNewTitle] = useState("");
   const [adding, setAdding] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editedLink, setEditedLink] = useState("");
-  const [editedTitle, setEditedTitle] = useState(""); // Add edited title state
+  const [editedTitle, setEditedTitle] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [categories, setCategories] = useState<any[]>([]);
   const [selectedCategory, setSelectedCategory] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
 
-  // Add ref to track swipeable components
   const swipeableRefs = useRef<{ [key: string]: any }>({});
 
   useEffect(() => {
@@ -129,7 +284,7 @@ export default function HomeScreen() {
       });
       setNewLink("");
       setNewTitle("");
-      setSelectedCategory(""); // Reset category
+      setSelectedCategory("");
     } catch (error: any) {
       Alert.alert("Add Error", error.message);
     } finally {
@@ -140,7 +295,7 @@ export default function HomeScreen() {
   const openEditModal = (id: string, url: string, title: string) => {
     setEditingId(id);
     setEditedLink(url);
-    setEditedTitle(title || ""); // Set current title
+    setEditedTitle(title || "");
     setEditModalVisible(true);
   };
 
@@ -152,11 +307,10 @@ export default function HomeScreen() {
     try {
       await updateDoc(doc(db, "users", uid, "links", editingId), {
         url: editedLink.trim(),
-        title: editedTitle.trim() || "Untitled Link", // Update title
+        title: editedTitle.trim() || "Untitled Link",
         updatedAt: new Date(),
       });
 
-      // Close the swipeable component for the edited item
       if (swipeableRefs.current[editingId]) {
         swipeableRefs.current[editingId].close();
       }
@@ -164,14 +318,13 @@ export default function HomeScreen() {
       setEditModalVisible(false);
       setEditingId(null);
       setEditedLink("");
-      setEditedTitle(""); // Reset edited title
+      setEditedTitle("");
     } catch (error: any) {
       Alert.alert("Edit Error", error.message);
     }
   };
 
   const closeEditModal = () => {
-    // Close the swipeable component for the item being edited
     if (editingId && swipeableRefs.current[editingId]) {
       swipeableRefs.current[editingId].close();
     }
@@ -179,10 +332,9 @@ export default function HomeScreen() {
     setEditModalVisible(false);
     setEditingId(null);
     setEditedLink("");
-    setEditedTitle(""); // Reset edited title
+    setEditedTitle("");
   };
 
-  // Filter links by category
   const filteredLinks = useMemo(() => {
     if (filterCategory === "all") return links;
     if (filterCategory === "uncategorized") {
@@ -191,7 +343,6 @@ export default function HomeScreen() {
     return links.filter((link) => link.categoryId === filterCategory);
   }, [links, filterCategory]);
 
-  // Updated to render left actions (delete) - minimal with icon only
   const renderLeftActions = (
     progress: Animated.AnimatedAddition<number>,
     dragX: Animated.AnimatedAddition<number>,
@@ -223,7 +374,6 @@ export default function HomeScreen() {
     );
   };
 
-  // Updated to render right actions (edit) - minimal with icon only
   const renderRightActions = (
     progress: Animated.AnimatedAddition<number>,
     dragX: Animated.AnimatedAddition<number>,
@@ -255,7 +405,6 @@ export default function HomeScreen() {
     );
   };
 
-  // Updated renderItem with ref tracking
   const renderItem = ({ item, index }: { item: any; index: number }) => {
     const category = categories.find((cat) => cat.id === item.categoryId);
 
@@ -271,26 +420,20 @@ export default function HomeScreen() {
         overshootLeft={false}
         overshootRight={false}
         renderLeftActions={(progress, dragX) =>
-          renderLeftActions(
-            progress,
-            dragX,
-            () => {
-              Alert.alert("Delete Link", "This action cannot be undone.", [
-                { text: "Cancel", style: "cancel" },
-                {
-                  text: "Delete",
-                  style: "destructive",
-                  onPress: () => handleDelete(item.id),
-                },
-              ]);
-            }
-          )
+          renderLeftActions(progress, dragX, () => {
+            Alert.alert("Delete Link", "This action cannot be undone.", [
+              { text: "Cancel", style: "cancel" },
+              {
+                text: "Delete",
+                style: "destructive",
+                onPress: () => handleDelete(item.id),
+              },
+            ]);
+          })
         }
         renderRightActions={(progress, dragX) =>
-          renderRightActions(
-            progress,
-            dragX,
-            () => openEditModal(item.id, item.url, item.title)
+          renderRightActions(progress, dragX, () =>
+            openEditModal(item.id, item.url, item.title)
           )
         }
         leftThreshold={40}
@@ -313,7 +456,10 @@ export default function HomeScreen() {
             <View
               style={[
                 styles.linkIcon,
-                { backgroundColor: (category?.color || theme.colors.primary) + "20" },
+                {
+                  backgroundColor:
+                    (category?.color || theme.colors.primary) + "20",
+                },
               ]}
             >
               <Ionicons
@@ -339,10 +485,7 @@ export default function HomeScreen() {
               {category && (
                 <View style={styles.categoryTag}>
                   <Text
-                    style={[
-                      styles.categoryTagText,
-                      { color: category.color },
-                    ]}
+                    style={[styles.categoryTagText, { color: category.color }]}
                   >
                     {category.name}
                   </Text>
@@ -478,9 +621,7 @@ export default function HomeScreen() {
                     styles.filterChipText,
                     {
                       color:
-                        filterCategory === "all"
-                          ? "white"
-                          : theme.colors.text,
+                        filterCategory === "all" ? "white" : theme.colors.text,
                     },
                   ]}
                 >
@@ -558,7 +699,7 @@ export default function HomeScreen() {
           </ScrollView>
         </View>
 
-        {/* Updated Add Section with Title Input */}
+        {/* Add Section with Category Selector */}
         <View
           style={[
             styles.addSection,
@@ -568,8 +709,7 @@ export default function HomeScreen() {
             },
           ]}
         >
-          {/* Title Input */}
-          <View style={styles.inputContainer}>
+          <View style={styles.inputRow}>
             <View
               style={[
                 styles.inputWrapper,
@@ -596,10 +736,16 @@ export default function HomeScreen() {
                 returnKeyType="next"
               />
             </View>
+
+            <CategorySelector
+              categories={categories}
+              selectedCategory={selectedCategory}
+              onCategoryChange={setSelectedCategory}
+              theme={theme}
+            />
           </View>
 
-          {/* URL Input */}
-          <View style={styles.inputContainer}>
+          <View style={styles.inputRow}>
             <View
               style={[
                 styles.inputWrapper,
@@ -652,40 +798,6 @@ export default function HomeScreen() {
               )}
             </TouchableOpacity>
           </View>
-
-          {/* Category Selector */}
-          <View style={styles.inputContainer}>
-            <View
-              style={[
-                styles.inputWrapper,
-                {
-                  backgroundColor: theme.colors.surface,
-                  borderColor: theme.colors.border,
-                },
-              ]}
-            >
-              <Ionicons
-                name="folder-outline"
-                size={18}
-                color={theme.colors.textSecondary}
-                style={styles.inputIcon}
-              />
-              <Picker
-                selectedValue={selectedCategory}
-                onValueChange={setSelectedCategory}
-                style={[styles.picker, { color: theme.colors.text }]}
-              >
-                <Picker.Item label="No Category" value="" />
-                {categories.map((category) => (
-                  <Picker.Item
-                    key={category.id}
-                    label={category.name}
-                    value={category.id}
-                  />
-                ))}
-              </Picker>
-            </View>
-          </View>
         </View>
 
         {/* Links List */}
@@ -701,7 +813,7 @@ export default function HomeScreen() {
           showsVerticalScrollIndicator={false}
         />
 
-        {/* Updated Edit Modal with Title */}
+        {/* Edit Modal */}
         <Modal visible={editModalVisible} transparent animationType="fade">
           <View style={styles.modalBackdrop}>
             <TouchableOpacity
@@ -731,7 +843,6 @@ export default function HomeScreen() {
                 </TouchableOpacity>
               </View>
 
-              {/* Title Input */}
               <View
                 style={[
                   styles.modalInputWrapper,
@@ -753,7 +864,6 @@ export default function HomeScreen() {
                 />
               </View>
 
-              {/* URL Input */}
               <View
                 style={[
                   styles.modalInputWrapper,
@@ -831,6 +941,7 @@ export default function HomeScreen() {
   );
 }
 
+// Main styles
 const styles = StyleSheet.create({
   container: { flex: 1 },
   loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
@@ -868,7 +979,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  inputContainer: {
+  inputRow: {
     flexDirection: "row",
     gap: 12,
     marginBottom: 12,
@@ -950,7 +1061,6 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
 
-  // Swipe action styles
   swipeActionsContainer: {
     flexDirection: "row",
     width: 60,
@@ -975,12 +1085,8 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  editButton: {
-    // Additional styling for edit button if needed
-  },
-  deleteButton: {
-    // Additional styling for delete button if needed
-  },
+  editButton: {},
+  deleteButton: {},
 
   emptyContainer: {
     alignItems: "center",
@@ -1095,8 +1201,71 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "500",
   },
-  picker: {
-    flex: 1,
+});
+
+// CategorySelector styles - simplified and fixed
+const categoryStyles = StyleSheet.create({
+  container: {
+    position: "relative",
+    minWidth: 120,
+    maxWidth: 140,
+  },
+  button: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     height: 48,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  content: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+    gap: 6,
+  },
+  text: {
+    fontSize: 14,
+    fontWeight: "500",
+    flex: 1,
+  },
+  miniIcon: {
+    width: 18,
+    height: 18,
+    borderRadius: 4,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  dropdown: {
+    position: "absolute",
+    top: 52,
+    left: 0,
+    right: 0,
+    borderRadius: 8,
+    borderWidth: 1,
+    maxHeight: 150,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 8,
+    zIndex: 1000,
+  },
+  dropdownScroll: {
+    maxHeight: 150,
+  },
+  option: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 8,
+    minHeight: 40,
+  },
+  optionText: {
+    fontSize: 14,
+    fontWeight: "500",
+    flex: 1,
   },
 });
