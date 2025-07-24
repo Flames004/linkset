@@ -9,7 +9,7 @@ export const useGoogleAuth = () => {
   const [request, response, promptAsync] = Google.useAuthRequest({
     clientId: process.env.EXPO_PUBLIC_GOOGLE_EXPO_CLIENT_ID,
     iosClientId: undefined, // not needed unless you want ios
-    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
+    // androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
     selectAccount: true,
   });
 
