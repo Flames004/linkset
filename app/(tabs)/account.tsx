@@ -379,13 +379,6 @@ export default function AccountScreen() {
               subtitle="Update your account password"
               onPress={() => Alert.alert("Coming Soon", "Password change will be available soon")}
             />
-            
-            <SettingItem
-              icon="mail-outline"
-              title="Email Preferences"
-              subtitle="Manage notification settings"
-              onPress={() => Alert.alert("Coming Soon", "Email preferences will be available soon")}
-            />
           </View>
 
           {/* App Settings */}
@@ -405,13 +398,6 @@ export default function AccountScreen() {
             />
             
             <SettingItem
-              icon="notifications-outline"
-              title="Notifications"
-              subtitle="Push notifications and alerts"
-              onPress={() => Alert.alert("Coming Soon", "Notification settings will be available soon")}
-            />
-            
-            <SettingItem
               icon="download-outline"
               title="Export Data"
               subtitle="Download your saved links"
@@ -426,13 +412,6 @@ export default function AccountScreen() {
             >
               Support
             </Text>
-            
-            <SettingItem
-              icon="help-circle-outline"
-              title="Help Center"
-              subtitle="Get help and support"
-              onPress={() => Alert.alert("Coming Soon", "Help center will be available soon")}
-            />
             
             <SettingItem
               icon="chatbubble-outline"
