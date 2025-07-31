@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -8,17 +8,54 @@ import {
   Platform,
   StatusBar,
   Alert,
+  Modal,
+  TextInput,
+  ActivityIndicator,
+  Image,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "@/context/ThemeContext";
 import { auth } from "@/services/firebase";
-import { signOut } from "firebase/auth";
+import { signOut, updateProfile } from "firebase/auth";
 import { router } from "expo-router";
 
 export default function AccountScreen() {
   const { theme, toggleTheme, isDark } = useTheme();
   const user = auth.currentUser;
+
+  // Replace the ANIMAL_AVATARS array with your complete collection:
+  const ANIMAL_AVATARS = [
+    { id: 'bear', name: 'Bear', emoji: '🐻', image: require('@/assets/avatars/bear.png') },
+    { id: 'cat', name: 'Cat', emoji: '🐱', image: require('@/assets/avatars/cat.png') },
+    { id: 'cow', name: 'Cow', emoji: '🐮', image: require('@/assets/avatars/cow.png') },
+    { id: 'deer', name: 'Deer', emoji: '🦌', image: require('@/assets/avatars/deer.png') },
+    { id: 'dog', name: 'Dog', emoji: '🐶', image: require('@/assets/avatars/dog.png') },
+    { id: 'elephant', name: 'Elephant', emoji: '🐘', image: require('@/assets/avatars/elephant.png') },
+    { id: 'fox', name: 'Fox', emoji: '🦊', image: require('@/assets/avatars/fox.png') },
+    { id: 'giraffe', name: 'Giraffe', emoji: '🦒', image: require('@/assets/avatars/giraffe.png') },
+    { id: 'hippo', name: 'Hippo', emoji: '🦛', image: require('@/assets/avatars/hippo.png') },
+    { id: 'horse', name: 'Horse', emoji: '🐴', image: require('@/assets/avatars/horse.png') },
+    { id: 'koala', name: 'Koala', emoji: '🐨', image: require('@/assets/avatars/koala.png') },
+    { id: 'lion', name: 'Lion', emoji: '🦁', image: require('@/assets/avatars/lion.png') },
+    { id: 'monkey', name: 'Monkey', emoji: '🐵', image: require('@/assets/avatars/monkey.png') },
+    { id: 'owl', name: 'Owl', emoji: '🦉', image: require('@/assets/avatars/owl.png') },
+    { id: 'panda', name: 'Panda', emoji: '🐼', image: require('@/assets/avatars/panda.png') },
+    { id: 'penguin', name: 'Penguin', emoji: '🐧', image: require('@/assets/avatars/penguin.png') },
+    { id: 'pig', name: 'Pig', emoji: '🐷', image: require('@/assets/avatars/pig.png') },
+    { id: 'rabbit', name: 'Rabbit', emoji: '🐰', image: require('@/assets/avatars/rabbit.png') },
+    { id: 'sloth', name: 'Sloth', emoji: '🦥', image: require('@/assets/avatars/sloth.png') },
+    { id: 'tiger', name: 'Tiger', emoji: '🐯', image: require('@/assets/avatars/tiger.png') },
+    { id: 'unicorn', name: 'Unicorn', emoji: '🦄', image: require('@/assets/avatars/unicorn.png') },
+    { id: 'zebra', name: 'Zebra', emoji: '🦓', image: require('@/assets/avatars/zebra.png') },
+  ];
+
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editedName, setEditedName] = useState(user?.displayName || "");
+  const [selectedAvatar, setSelectedAvatar] = useState(
+    user?.photoURL || 'cat' // Changed default from 'person' to 'cat'
+  );
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const handleLogout = () => {
     Alert.alert(
@@ -121,6 +158,68 @@ export default function AccountScreen() {
     </TouchableOpacity>
   );
 
+  // Helper to get avatar data by ID
+  const getAnimalData = (animalId: string) => {
+    return ANIMAL_AVATARS.find(a => a.id === animalId) || ANIMAL_AVATARS[0];
+  };
+
+  // Update the profile card avatar display
+  const renderAvatar = (animalId: string, size: number = 32) => {
+    const animalData = getAnimalData(animalId);
+    
+    return (
+      <View
+        style={[
+          styles.avatarContainer,
+          { 
+            width: size * 2,
+            height: size * 2,
+            borderRadius: size,
+            backgroundColor: theme.colors.surface,
+            overflow: 'hidden',
+            borderWidth: 2,
+            borderColor: theme.colors.border,
+          },
+        ]}
+      >
+        <Image
+          source={animalData.image}
+          style={{
+            width: size * 2,
+            height: size * 2,
+          }}
+          resizeMode="cover"
+        />
+      </View>
+    );
+  };
+
+  // Function to save profile updates (much simpler now)
+  const saveProfile = async () => {
+    if (!user) return;
+    
+    setIsUpdating(true);
+    try {
+      // Update Firebase Auth profile with avatar ID
+      await updateProfile(user, {
+        displayName: editedName.trim() || user.displayName,
+        photoURL: selectedAvatar, // Store avatar ID instead of image URL
+      });
+      
+      // Force refresh the user to get updated data
+      await user.reload();
+      
+      Alert.alert("Success", "Profile updated successfully!");
+      setEditModalVisible(false);
+      
+    } catch (error: any) {
+      console.error("Profile update error:", error);
+      Alert.alert("Error", error.message || "Failed to update profile. Please try again.");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   return (
     <View style={{ flex: 1 }}>
       <StatusBar
@@ -178,18 +277,7 @@ export default function AccountScreen() {
                 },
               ]}
             >
-              <View
-                style={[
-                  styles.avatarContainer,
-                  { backgroundColor: theme.colors.primary + "20" },
-                ]}
-              >
-                <Ionicons
-                  name="person"
-                  size={32}
-                  color={theme.colors.primary}
-                />
-              </View>
+              {renderAvatar(user?.photoURL || 'cat', 30)}
               <View style={styles.profileInfo}>
                 <Text
                   style={[styles.profileName, { color: theme.colors.text }]}
@@ -219,8 +307,12 @@ export default function AccountScreen() {
             <SettingItem
               icon="person-outline"
               title="Edit Profile"
-              subtitle="Update your name and photo"
-              onPress={() => Alert.alert("Coming Soon", "Profile editing will be available soon")}
+              subtitle="Update your name and animal avatar"
+              onPress={() => {
+                setEditedName(user?.displayName || "");
+                setSelectedAvatar(user?.photoURL || 'cat');
+                setEditModalVisible(true);
+              }}
             />
             
             <SettingItem
@@ -310,6 +402,155 @@ export default function AccountScreen() {
             />
           </View>
         </ScrollView>
+
+        {/* Edit Profile Modal */}
+        <Modal visible={editModalVisible} transparent animationType="slide">
+          <View style={styles.modalBackdrop}>
+            <TouchableOpacity
+              style={StyleSheet.absoluteFillObject}
+              activeOpacity={1}
+              onPress={() => setEditModalVisible(false)}
+            />
+            <View
+              style={[
+                styles.editModalContainer,
+                { backgroundColor: theme.colors.card },
+              ]}
+            >
+              <View style={styles.modalHeader}>
+                <Text style={[styles.modalTitle, { color: theme.colors.text }]}>
+                  Edit Profile
+                </Text>
+                <TouchableOpacity
+                  onPress={() => setEditModalVisible(false)}
+                  style={styles.modalCloseButton}
+                >
+                  <Ionicons
+                    name="close"
+                    size={20}
+                    color={theme.colors.textSecondary}
+                  />
+                </TouchableOpacity>
+              </View>
+
+              {/* Avatar Selection Section */}
+              <View style={styles.avatarSection}>
+                <Text style={[styles.sectionLabel, { color: theme.colors.text }]}>
+                  Choose Your Animal Avatar
+                </Text>
+                <ScrollView 
+                  horizontal 
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.avatarScrollView}
+                  contentContainerStyle={styles.avatarScrollContent}
+                >
+                  {ANIMAL_AVATARS.map((animal) => (
+                    <TouchableOpacity
+                      key={animal.id}
+                      style={[
+                        styles.avatarOption,
+                        {
+                          backgroundColor: theme.colors.surface,
+                          borderColor: selectedAvatar === animal.id 
+                            ? theme.colors.primary 
+                            : theme.colors.border,
+                          borderWidth: 3,
+                          overflow: 'hidden',
+                        },
+                      ]}
+                      onPress={() => setSelectedAvatar(animal.id)}
+                      activeOpacity={0.7}
+                    >
+                      <Image
+                        source={animal.image}
+                        style={{
+                          width: 50, // Adjusted to fit new container
+                          height: 50,
+                        }}
+                        resizeMode="cover"
+                      />
+                      <View style={styles.animalEmoji}>
+                        <Text style={styles.emojiText}>{animal.emoji}</Text>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+                <Text style={[styles.avatarHint, { color: theme.colors.textSecondary }]}>
+                  {getAnimalData(selectedAvatar).name}
+                </Text>
+              </View>
+
+              {/* Name Input */}
+              <View style={styles.inputSection}>
+                <Text style={[styles.inputLabel, { color: theme.colors.text }]}>
+                  Display Name
+                </Text>
+                <View
+                  style={[
+                    styles.editInputWrapper,
+                    {
+                      backgroundColor: theme.colors.surface,
+                      borderColor: theme.colors.border,
+                    },
+                  ]}
+                >
+                  <TextInput
+                    value={editedName}
+                    onChangeText={setEditedName}
+                    style={[styles.editInput, { color: theme.colors.text }]}
+                    placeholder="Enter your name"
+                    placeholderTextColor={theme.colors.textSecondary}
+                    autoCapitalize="words"
+                    autoCorrect={true}
+                    returnKeyType="done"
+                    onSubmitEditing={saveProfile}
+                  />
+                </View>
+              </View>
+
+              {/* Action Buttons */}
+              <View style={styles.editModalActions}>
+                <TouchableOpacity
+                  onPress={() => setEditModalVisible(false)}
+                  style={[
+                    styles.editModalButton,
+                    styles.cancelButton,
+                    { backgroundColor: theme.colors.surface },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.cancelButtonText,
+                      { color: theme.colors.text },
+                    ]}
+                  >
+                    Cancel
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={saveProfile}
+                  style={[
+                    styles.editModalButton,
+                    styles.saveButton,
+                    {
+                      backgroundColor: theme.colors.primary,
+                      opacity: isUpdating ? 0.6 : 1,
+                    },
+                  ]}
+                  disabled={isUpdating}
+                >
+                  {isUpdating ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={styles.saveButtonText}>
+                      Save Changes
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </LinearGradient>
     </View>
   );
@@ -361,6 +602,43 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     marginLeft: 4,
   },
+  sectionLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  avatarScrollView: {
+    marginBottom: 8,
+  },
+  avatarScrollContent: {
+    paddingHorizontal: 16,
+    gap: 8, // Reduced gap for more avatars
+  },
+  avatarOption: {
+    width: 54, // Slightly smaller
+    height: 54,
+    borderRadius: 27,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginHorizontal: 2, // Reduced margin
+    position: 'relative',
+  },
+  animalEmoji: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    backgroundColor: 'white',
+    borderRadius: 10,
+    width: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E5E7',
+  },
+  emojiText: {
+    fontSize: 10,
+  },
 
   profileCard: {
     flexDirection: "row",
@@ -375,11 +653,8 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   avatarContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
     marginRight: 16,
   },
   profileInfo: {
@@ -434,5 +709,91 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
     marginTop: 2,
+  },
+
+  /* Edit Profile Modal Styles */
+  modalBackdrop: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    paddingHorizontal: 24,
+  },
+  editModalContainer: {
+    width: '100%',
+    maxWidth: 360,
+    borderRadius: 16,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  modalCloseButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarSection: {
+    marginBottom: 24,
+  },
+  avatarHint: {
+    fontSize: 12,
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  inputSection: {
+    marginBottom: 24,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  editInputWrapper: {
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 16,
+    height: 48,
+    justifyContent: 'center',
+  },
+  editInput: {
+    fontSize: 16,
+    fontWeight: '400',
+  },
+  editModalActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  editModalButton: {
+    flex: 1,
+    height: 48,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cancelButton: {},
+  saveButton: {},
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  saveButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: 'white',
   },
 });
