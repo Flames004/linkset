@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { DarkTheme, DefaultTheme, ThemeProvider } from "@react-navigation/native";
-import { Stack, router } from "expo-router"; // Add router import here
+import { Stack, router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { AuthProvider } from "@/context/AuthContext";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -18,7 +18,7 @@ ExpoSplashScreen.preventAutoHideAsync();
 
 export default function Layout() {
   const [showSplash, setShowSplash] = useState(true);
-  const [showOnboarding, setShowOnboarding] = useState(true); // Always true for testing
+  const [showOnboarding, setShowOnboarding] = useState(false); // Back to false for production
   const [appIsReady, setAppIsReady] = useState(false);
   const [loaded] = useFonts({
     SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
@@ -28,6 +28,12 @@ export default function Layout() {
     async function prepare() {
       try {
         // Pre-load fonts, make any API calls you need to do here
+
+        // Check if user has seen onboarding
+        const hasSeenOnboarding = await AsyncStorage.getItem("hasSeenOnboarding");
+        if (!hasSeenOnboarding) {
+          setShowOnboarding(true);
+        }
       } catch (e) {
         console.warn(e);
       } finally {
@@ -44,27 +50,18 @@ export default function Layout() {
     }
   }, [appIsReady]);
 
-  // COMMENT OUT the onboarding check for testing:
-  // useEffect(() => {
-  //   async function checkOnboarding() {
-  //     const hasSeenOnboarding = await AsyncStorage.getItem("hasSeenOnboarding");
-  //     if (!hasSeenOnboarding) {
-  //       setShowOnboarding(true);
-  //     }
-  //   }
-  //   checkOnboarding();
-  // }, []);
-
   // Show custom splash screen
   if (showSplash) {
     return <SplashScreen onFinish={() => setShowSplash(false)} />;
   }
 
-  // Show onboarding screen (always for testing)
+  // Show onboarding screen for first-time users only
   if (showOnboarding) {
     return (
       <OnboardingScreen
-        onFinish={() => {
+        onFinish={async () => {
+          // Mark onboarding as seen
+          await AsyncStorage.setItem("hasSeenOnboarding", "true");
           setShowOnboarding(false);
           // Navigate to auth after onboarding
           router.replace("/(auth)/signup");
