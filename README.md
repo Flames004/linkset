@@ -1,208 +1,137 @@
 # LinkSet 🔗
 
-A modern, elegant link management app built with React Native and Expo. Save, organize, and access your important links with a beautiful, intuitive interface.
+A beautiful, cross-platform link management app built with React Native and Expo. Save, organize, and access your favorite links across all devices with real-time sync.
 
-## 🌟 Features
+## ✨ Features
 
-### 🔐 **Authentication**
-- Email/password registration and login
-- Google Sign-in integration
-- Secure user session management
-- Protected routes with automatic redirects
+### 🔐 Authentication & User Management
+- **Email Authentication** - Secure login and registration with Firebase Auth
+- **Google Sign-In** - Coming Soon! 🚀
+- **Profile Management** - Edit name and avatar
+- **Secure Logout** - Safe session management
 
-### 📎 **Link Management**
-- Add links with optional titles/captions
-- Edit existing links (URL and title)
-- Delete links with intuitive swipe gestures
-- Real-time synchronization across devices
-- Automatic sorting by modification date
+### 🐾 Avatar System
+- **22 Animal Avatars** - Choose from bear, cat, dog, fox, panda, and more
+- **Custom Avatar Collection** - Beautiful, consistent design across all animals
+- **Profile Sync** - Avatar selections sync across devices
+- **Visual Selection** - Easy avatar picker with emoji indicators
 
-### 🎨 **Modern Design**
-- Clean, card-based interface
-- Dark/Light theme with system preference
-- Smooth animations and transitions
-- Responsive design for all screen sizes
-- Beautiful gradient backgrounds
+### 🔗 Link Management
+- **Add Links** - Save any URL with custom titles and descriptions
+- **Smart Categories** - Organize links with color-coded categories
+- **Edit & Delete** - Full CRUD operations for your links
+- **Real-time Sync** - Changes sync instantly across devices
+- **URL Validation** - Automatic link formatting and validation
 
-### 📱 **User Experience**
-- Tab navigation (Links + Account)
-- Swipe-to-edit and swipe-to-delete
-- Modal-based editing interface
-- Keyboard-aware layouts
-- Touch feedback and loading states
+### 🔍 Search & Discovery
+- **Global Search** - Find links by title, description, or URL
+- **Category Filtering** - Filter links by specific categories
+- **Smart Suggestions** - Intelligent search recommendations
+- **Instant Results** - Real-time search with no delays
 
-### ⚙️ **Account Management**
-- User profile with account details
-- Organized settings (Account, App, Support)
-- Theme preference management
-- Secure logout with confirmation
+### 🎨 User Interface
+- **Dark & Light Themes** - Beautiful themes that adapt to your preference
+- **Gradient Backgrounds** - Stunning visual design
+- **Smooth Animations** - Polished transitions and interactions
+- **Responsive Design** - Works perfectly on phones and tablets
+- **Clean Typography** - Easy-to-read fonts and proper hierarchy
+
+### 📱 Navigation & UX
+- **Tab Navigation** - Easy access to Home, Categories, and Account
+- **Floating Action Button** - Quick link addition from anywhere
+- **Modal Interfaces** - Intuitive popup forms and editors
+- **Pull-to-Refresh** - Easy content updates
+- **Haptic Feedback** - Satisfying touch responses
+
+### 📧 Support & Feedback
+- **Contact Us System** - Built-in feedback collection
+- **Multiple Contact Types** - General Feedback, Bug Reports, Feature Requests, Technical Support
+- **Firebase Integration** - All feedback saved to Firestore for easy management
+- **Professional Forms** - Structured subject and message fields
+
+### ⚙️ Account Settings
+- **Profile Editing** - Update name and avatar
+- **Theme Toggle** - Switch between light and dark modes
+- **Password Management** - Change account password (Coming Soon)
+- **Data Export** - Download your saved links (Coming Soon)
+- **About Section** - App version and information
+
+## 🛠️ Tech Stack
+
+- **Frontend**: React Native with Expo
+- **Backend**: Firebase (Firestore, Authentication)
+- **Navigation**: Expo Router with file-based routing
+- **Styling**: StyleSheet with theme support
+- **State Management**: React Hooks
+- **Icons**: Expo Vector Icons (Ionicons)
+- **Gradients**: Expo Linear Gradient
 
 ## 🚀 Getting Started
 
 ### Prerequisites
-
 - Node.js (v16 or higher)
-- npm or yarn
-- Expo CLI (`npm install -g @expo/cli`)
-- Firebase account
-- Google Developer Console account (for Google Auth)
+- Expo CLI
+- iOS Simulator or Android Studio (for local testing)
+- Expo Go app (for device testing)
 
 ### Installation
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/linkset.git
+   git clone https://github.com/Flames004/linkset.git
    cd linkset
    ```
 
 2. **Install dependencies**
    ```bash
    npm install
-   # or
-   yarn install
    ```
 
 3. **Set up Firebase**
-   - Create a new Firebase project at [Firebase Console](https://console.firebase.google.com)
-   - Enable Authentication (Email/Password and Google)
-   - Enable Firestore Database
-   - Download the configuration file
+   - Create a new Firebase project
+   - Enable Authentication (Email/Password)
+   - Create Firestore database
+   - Add your Firebase config to `services/firebase.ts`
 
-4. **Configure Firebase**
-   Create `services/firebase.ts` with your Firebase configuration:
-   ```typescript
-   import { initializeApp } from 'firebase/app';
-   import { getAuth } from 'firebase/auth';
-   import { getFirestore } from 'firebase/firestore';
-
-   const firebaseConfig = {
-     // Your Firebase configuration
-   };
-
-   const app = initializeApp(firebaseConfig);
-   export const auth = getAuth(app);
-   export const db = getFirestore(app);
-   ```
-
-5. **Set up Google Authentication**
-   - Configure OAuth 2.0 in Google Developer Console
-   - Add your configuration to `services/googleAuth.ts`
-
-6. **Start the development server**
+4. **Start the development server**
    ```bash
    npx expo start
    ```
 
-## 📱 Running the App
+5. **Test on device**
+   - Install Expo Go on your mobile device
+   - Scan the QR code from the terminal
+   - Or use `npx expo start --tunnel` for remote testing
 
-### Development
-```bash
-# Start Expo development server
-npx expo start
+## 🎯 Roadmap
 
-# Run on iOS simulator
-npx expo start --ios
+### 🔜 Coming Soon
+- **Google Authentication** - One-click sign in with Google
+- **Password Reset** - Email-based password recovery
+- **Data Export** - Backup your links as JSON/CSV
+- **Link Validation** - Check if saved links are still active
+- **Favorites System** - Star your most important links
+- **Advanced Search** - Filter by date, tags, and more
 
-# Run on Android emulator
-npx expo start --android
+### 🌐 Future Plans
+- **Chrome Extension** - Quick save from any website
+- **Web App** - Access your links from any browser
+- **Team Sharing** - Share link collections with others
+- **Import/Export** - Migrate from other bookmark services
+- **Analytics** - Track your link usage patterns
 
-# Run on physical device
-# Scan QR code with Expo Go app
-```
+## 🐛 Known Issues
 
-### Building for Production
-```bash
-# Build for iOS
-npx expo build:ios
+- Google Authentication is temporarily disabled (under development)
+- Some features show "Coming Soon" placeholders
 
-# Build for Android
-npx expo build:android
-```
+## 📞 Support
 
-## 🏗️ Project Structure
+Found a bug or have a feature request? Use the built-in Contact Us feature in the app, or reach out to us at:
 
-```
-linkset/
-├── app/                    # Main application code
-│   ├── (auth)/            # Authentication screens
-│   │   ├── login.tsx      # Login screen
-│   │   └── signup.tsx     # Sign up screen
-│   ├── (tabs)/            # Main app tabs
-│   │   ├── index.tsx      # Home/Links screen
-│   │   ├── account.tsx    # Account/Settings screen
-│   │   └── _layout.tsx    # Tab navigation layout
-│   └── _layout.tsx        # Root layout
-├── context/               # React Context providers
-│   ├── AuthContext.tsx    # Authentication state
-│   └── ThemeContext.tsx   # Theme management
-├── services/              # External services
-│   ├── firebase.ts        # Firebase configuration
-│   └── googleAuth.ts      # Google authentication
-├── assets/                # Static assets
-└── README.md             # This file
-```
+- **Email**: support@linkset.app
+- **Feedback**: Use the in-app contact form
+- **Issues**: Create an issue on GitHub
 
-## 🛠️ Tech Stack
 
-### **Frontend**
-- **React Native** - Cross-platform mobile framework
-- **Expo** - Development platform and toolchain
-- **TypeScript** - Type-safe JavaScript
-- **Expo Router** - File-based navigation
-
-### **Backend & Services**
-- **Firebase Auth** - User authentication
-- **Firestore** - NoSQL database for real-time data
-- **Google OAuth** - Social authentication
-
-### **UI & Styling**
-- **React Native Gesture Handler** - Touch interactions
-- **Expo Linear Gradient** - Beautiful gradients
-- **Expo Vector Icons** - Icon library
-- **Custom Themes** - Dark/Light mode support
-
-## 🎯 Current Status
-
-### ✅ **Completed Features**
-- [x] User authentication (Email/Password)
-- [x] Link CRUD operations
-- [x] Modern UI with dark/light themes
-- [x] Swipe gestures for edit/delete
-- [x] Real-time data synchronization
-- [x] Account management
-- [x] Tab navigation
-
-### 🚧 **In Progress**
-- [ ] Google Authentication fixes
-- [ ] Share extension integration
-- [ ] User onboarding flow
-
-### 📋 **Planned Features**
-- [ ] Search functionality
-- [ ] Link categories/tags
-- [ ] Link previews with thumbnails
-- [ ] Offline mode with sync
-- [ ] Export/import functionality
-- [ ] Widget support
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-### Development Guidelines
-1. Follow the existing code style
-2. Write meaningful commit messages
-3. Test your changes thoroughly
-4. Update documentation as needed
-
-### Reporting Issues
-- Use the GitHub issue tracker
-- Provide detailed reproduction steps
-- Include device/OS information
-- Attach screenshots if applicable
-
----
-
-<p align="center">
-  <strong>Built with ❤️ by Flames</strong>
-</p>
+**LinkSet** - Save links. Stay organized. Sync everywhere. 🔗✨
