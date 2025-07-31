@@ -19,6 +19,8 @@ import { useTheme } from "@/context/ThemeContext";
 import { auth } from "@/services/firebase";
 import { signOut, updateProfile } from "firebase/auth";
 import { router } from "expo-router";
+import { collection, addDoc } from 'firebase/firestore';
+import { db } from '@/services/firebase';
 
 export default function AccountScreen() {
   const { theme, toggleTheme, isDark } = useTheme();
@@ -50,12 +52,26 @@ export default function AccountScreen() {
     { id: 'zebra', name: 'Zebra', emoji: '🦓', image: require('@/assets/avatars/zebra.png') },
   ];
 
+  const CONTACT_TYPES = [
+    { id: 'feedback', name: 'General Feedback', emoji: '💬' },
+    { id: 'bug', name: 'Bug Report', emoji: '🐛' },
+    { id: 'feature', name: 'Feature Request', emoji: '💡' },
+    { id: 'support', name: 'Technical Support', emoji: '🛠️' },
+    { id: 'other', name: 'Other', emoji: '📝' },
+  ];
+
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editedName, setEditedName] = useState(user?.displayName || "");
   const [selectedAvatar, setSelectedAvatar] = useState(
     user?.photoURL || 'cat' // Changed default from 'person' to 'cat'
   );
   const [isUpdating, setIsUpdating] = useState(false);
+
+  const [contactModalVisible, setContactModalVisible] = useState(false);
+  const [contactSubject, setContactSubject] = useState("");
+  const [contactMessage, setContactMessage] = useState("");
+  const [contactType, setContactType] = useState("feedback");
+  const [isSendingContact, setIsSendingContact] = useState(false);
 
   const handleLogout = () => {
     Alert.alert(
@@ -220,6 +236,48 @@ export default function AccountScreen() {
     }
   };
 
+  // Contact submission function
+  const submitContact = async () => {
+    if (!contactSubject.trim() || !contactMessage.trim()) {
+      Alert.alert("Missing Information", "Please fill in both subject and message.");
+      return;
+    }
+
+    setIsSendingContact(true);
+    try {
+      // Save to Firestore
+      await addDoc(collection(db, 'feedback'), {
+        userId: user?.uid,
+        userEmail: user?.email,
+        userName: user?.displayName || 'Anonymous',
+        userAvatar: user?.photoURL || 'cat',
+        contactType: contactType,
+        contactTypeName: CONTACT_TYPES.find(t => t.id === contactType)?.name || 'General Feedback',
+        subject: contactSubject.trim(),
+        message: contactMessage.trim(),
+        timestamp: new Date(),
+        status: 'unread',
+        platform: 'mobile'
+      });
+      
+      Alert.alert(
+        "Message Sent!", 
+        "Thanks for reaching out! We'll get back to you soon.",
+        [{ text: "OK", onPress: () => {
+          setContactModalVisible(false);
+          setContactSubject("");
+          setContactMessage("");
+          setContactType("feedback");
+        }}]
+      );
+    } catch (error: any) {
+      console.error('Contact submission error:', error);
+      Alert.alert("Error", "Failed to send message. Please try again.");
+    } finally {
+      setIsSendingContact(false);
+    }
+  };
+
   return (
     <View style={{ flex: 1 }}>
       <StatusBar
@@ -380,7 +438,7 @@ export default function AccountScreen() {
               icon="chatbubble-outline"
               title="Contact Us"
               subtitle="Send feedback or report issues"
-              onPress={() => Alert.alert("Coming Soon", "Contact form will be available soon")}
+              onPress={() => setContactModalVisible(true)}
             />
             
             <SettingItem
@@ -544,6 +602,181 @@ export default function AccountScreen() {
                   ) : (
                     <Text style={styles.saveButtonText}>
                       Save Changes
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Contact Us Modal */}
+        <Modal visible={contactModalVisible} transparent animationType="slide">
+          <View style={styles.modalBackdrop}>
+            <TouchableOpacity
+              style={StyleSheet.absoluteFillObject}
+              activeOpacity={1}
+              onPress={() => setContactModalVisible(false)}
+            />
+            <View
+              style={[
+                styles.contactModalContainer,
+                { backgroundColor: theme.colors.card },
+              ]}
+            >
+              <View style={styles.modalHeader}>
+                <Text style={[styles.modalTitle, { color: theme.colors.text }]}>
+                  Contact Us
+                </Text>
+                <TouchableOpacity
+                  onPress={() => setContactModalVisible(false)}
+                  style={styles.modalCloseButton}
+                >
+                  <Ionicons
+                    name="close"
+                    size={20}
+                    color={theme.colors.textSecondary}
+                  />
+                </TouchableOpacity>
+              </View>
+
+              {/* Contact Type Selection */}
+              <View style={styles.contactTypeSection}>
+                <Text style={[styles.inputLabel, { color: theme.colors.text }]}>
+                  What can we help you with?
+                </Text>
+                <ScrollView 
+                  horizontal 
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.contactTypeScrollView}
+                  contentContainerStyle={styles.contactTypeScrollContent}
+                >
+                  {CONTACT_TYPES.map((type) => (
+                    <TouchableOpacity
+                      key={type.id}
+                      style={[
+                        styles.contactTypeChip,
+                        {
+                          backgroundColor: contactType === type.id 
+                            ? theme.colors.primary 
+                            : theme.colors.surface,
+                          borderColor: contactType === type.id 
+                            ? theme.colors.primary 
+                            : theme.colors.border,
+                        },
+                      ]}
+                      onPress={() => setContactType(type.id)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.contactTypeEmoji}>{type.emoji}</Text>
+                      <Text
+                        style={[
+                          styles.contactTypeText,
+                          {
+                            color: contactType === type.id 
+                              ? 'white' 
+                              : theme.colors.text,
+                          },
+                        ]}
+                      >
+                        {type.name}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+
+              {/* Subject Input */}
+              <View style={styles.inputSection}>
+                <Text style={[styles.inputLabel, { color: theme.colors.text }]}>
+                  Subject
+                </Text>
+                <View
+                  style={[
+                    styles.editInputWrapper,
+                    {
+                      backgroundColor: theme.colors.surface,
+                      borderColor: theme.colors.border,
+                    },
+                  ]}
+                >
+                  <TextInput
+                    value={contactSubject}
+                    onChangeText={setContactSubject}
+                    style={[styles.editInput, { color: theme.colors.text }]}
+                    placeholder="Brief description of your message"
+                    placeholderTextColor={theme.colors.textSecondary}
+                    autoCapitalize="sentences"
+                    returnKeyType="next"
+                  />
+                </View>
+              </View>
+
+              {/* Message Input */}
+              <View style={styles.inputSection}>
+                <Text style={[styles.inputLabel, { color: theme.colors.text }]}>
+                  Message
+                </Text>
+                <View
+                  style={[
+                    styles.messageInputWrapper,
+                    {
+                      backgroundColor: theme.colors.surface,
+                      borderColor: theme.colors.border,
+                    },
+                  ]}
+                >
+                  <TextInput
+                    value={contactMessage}
+                    onChangeText={setContactMessage}
+                    style={[styles.messageInput, { color: theme.colors.text }]}
+                    placeholder="Tell us more about your feedback, issue, or question..."
+                    placeholderTextColor={theme.colors.textSecondary}
+                    multiline
+                    numberOfLines={4}
+                    autoCapitalize="sentences"
+                    returnKeyType="done"
+                    textAlignVertical="top"
+                  />
+                </View>
+              </View>
+
+              {/* Action Buttons */}
+              <View style={styles.editModalActions}>
+                <TouchableOpacity
+                  onPress={() => setContactModalVisible(false)}
+                  style={[
+                    styles.editModalButton,
+                    styles.cancelButton,
+                    { backgroundColor: theme.colors.surface },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.cancelButtonText,
+                      { color: theme.colors.text },
+                    ]}
+                  >
+                    Cancel
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={submitContact}
+                  style={[
+                    styles.editModalButton,
+                    styles.saveButton,
+                    {
+                      backgroundColor: theme.colors.primary,
+                      opacity: isSendingContact ? 0.6 : 1,
+                    },
+                  ]}
+                  disabled={isSendingContact}
+                >
+                  {isSendingContact ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={styles.saveButtonText}>
+                      Send Message
                     </Text>
                   )}
                 </TouchableOpacity>
@@ -795,5 +1028,58 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: 'white',
+  },
+
+  /* Contact Us Modal Styles */
+  contactModalContainer: {
+    width: '100%',
+    maxWidth: 400,
+    maxHeight: '85%',
+    borderRadius: 16,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  contactTypeSection: {
+    marginBottom: 20,
+  },
+  contactTypeScrollView: {
+    marginTop: 8,
+  },
+  contactTypeScrollContent: {
+    paddingHorizontal: 4,
+    gap: 8,
+  },
+  contactTypeChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    marginHorizontal: 4,
+  },
+  contactTypeEmoji: {
+    fontSize: 14,
+    marginRight: 6,
+  },
+  contactTypeText: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  messageInputWrapper: {
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    minHeight: 100,
+  },
+  messageInput: {
+    fontSize: 16,
+    fontWeight: '400',
+    minHeight: 80,
   },
 });
