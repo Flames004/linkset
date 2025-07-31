@@ -289,21 +289,38 @@ export default function SignUpScreen() {
 
             {/* Google Sign Up */}
             <TouchableOpacity
-              onPress={handleGoogleSignUp}
+              onPress={() => {
+                Alert.alert(
+                  "Coming Soon! 🚀",
+                  "Google Sign-In is under development and will be available in the next update.",
+                  [{ text: "Got it!", style: "default" }]
+                );
+              }}
               style={[
                 styles.googleButton,
                 {
                   backgroundColor: theme.colors.surface,
                   borderColor: theme.colors.border,
+                  opacity: 0.6, // Make it look disabled
                 },
               ]}
-              disabled={!request}
+              activeOpacity={0.8}
             >
-              <Ionicons name="logo-google" size={20} color="#4285F4" />
+              <Ionicons
+                name="logo-google"
+                size={20}
+                color="#9CA3AF"
+                style={{ opacity: 0.5 }}
+              />
               <Text
-                style={[styles.googleButtonText, { color: theme.colors.text }]}
+                style={[
+                  styles.googleButtonText,
+                  {
+                    color: theme.colors.textSecondary, // Muted text color
+                  },
+                ]}
               >
-                Continue with Google
+                Continue with Google (Coming Soon)
               </Text>
             </TouchableOpacity>
           </View>
