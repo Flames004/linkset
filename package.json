@@ -32,7 +32,9 @@
     "react-native-svg": "15.11.2",
     "expo-crypto": "~14.1.5",
     "@react-native-picker/picker": "2.11.1",
-    "expo-image-picker": "~16.1.4"
+    "expo-image-picker": "~16.1.4",
+    "react-dom": "19.0.0",
+    "react-native-web": "^0.20.0"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

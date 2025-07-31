@@ -1,5 +1,5 @@
 // app/index.tsx
-import React, { useContext, useEffect, useRef } from 'react';
+import React, { useContext, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -9,19 +9,20 @@ import {
   Dimensions,
   Animated,
   ScrollView,
-} from 'react-native';
-import { AuthContext } from '../context/AuthContext';
-import { Redirect, router } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '@/context/ThemeContext';
+  Image,
+} from "react-native";
+import { AuthContext } from "../context/AuthContext";
+import { Redirect, router } from "expo-router";
+import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
+import { useTheme } from "@/context/ThemeContext";
 
-const { width, height } = Dimensions.get('window');
+const { width, height } = Dimensions.get("window");
 
 export default function WelcomeScreen() {
   const { user, loading } = useContext(AuthContext);
   const { theme, isDark } = useTheme();
-  
+
   // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
@@ -92,7 +93,9 @@ export default function WelcomeScreen() {
         >
           <Ionicons name="link" size={32} color={theme.colors.primary} />
         </Animated.View>
-        <Text style={[styles.loadingText, { color: theme.colors.textSecondary }]}>
+        <Text
+          style={[styles.loadingText, { color: theme.colors.textSecondary }]}
+        >
           Loading LinkSet...
         </Text>
       </LinearGradient>
@@ -105,11 +108,11 @@ export default function WelcomeScreen() {
   }
 
   const handleGetStarted = () => {
-    router.push('/(auth)/signup');
+    router.push("/(auth)/signup");
   };
 
   const handleSignIn = () => {
-    router.push('/(auth)/login');
+    router.push("/(auth)/login");
   };
 
   return (
@@ -121,9 +124,10 @@ export default function WelcomeScreen() {
       />
 
       <LinearGradient
-        colors={isDark 
-          ? ["#1a1a2e", "#16213e", "#0f3460"] 
-          : ["#667eea", "#764ba2", "#f093fb"]
+        colors={
+          isDark
+            ? ["#1a1a2e", "#16213e", "#0f3460"]
+            : ["#667eea", "#764ba2", "#f093fb"]
         }
         style={styles.gradient}
         start={{ x: 0, y: 0 }}
@@ -161,7 +165,7 @@ export default function WelcomeScreen() {
           ))}
         </View>
 
-        <ScrollView 
+        <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
@@ -180,17 +184,22 @@ export default function WelcomeScreen() {
                 styles.logoContainer,
                 {
                   transform: [
-                    { scale: Animated.multiply(scaleAnim, pulseAnim) }
+                    { scale: Animated.multiply(scaleAnim, pulseAnim) },
                   ],
                 },
               ]}
             >
-              <LinearGradient
+              <Image
+                source={require("@/assets/images/welcome-hero2.png")}
+                style={{ width: 250, height: 250 }}
+                resizeMode="contain"
+              />
+              {/* <LinearGradient
                 colors={['#ffffff', '#f8f9fa']}
                 style={styles.logoGradient}
               >
                 <Ionicons name="link" size={56} color="#667eea" />
-              </LinearGradient>
+              </LinearGradient> */}
             </Animated.View>
 
             <Text style={styles.welcomeText}>Welcome to</Text>
@@ -300,7 +309,7 @@ export default function WelcomeScreen() {
               activeOpacity={0.9}
             >
               <LinearGradient
-                colors={['#ffffff', '#f8f9fa']}
+                colors={["#ffffff", "#f8f9fa"]}
                 style={styles.buttonGradient}
               >
                 <Text style={styles.primaryButtonText}>Get Started Free</Text>
@@ -320,12 +329,7 @@ export default function WelcomeScreen() {
           </Animated.View>
 
           {/* Footer */}
-          <Animated.View
-            style={[
-              styles.footer,
-              { opacity: fadeAnim },
-            ]}
-          >
+          <Animated.View style={[styles.footer, { opacity: fadeAnim }]}>
             <Text style={styles.footerText}>
               Join thousands of users organizing their digital life
             </Text>
@@ -368,37 +372,37 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   loadingLogo: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: 16,
   },
   loadingText: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   gradient: {
     flex: 1,
   },
   floatingElements: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
   },
   floatingDot: {
-    position: 'absolute',
+    position: "absolute",
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    backgroundColor: "rgba(255, 255, 255, 0.3)",
     top: `${Math.random() * 100}%`,
     left: `${Math.random() * 100}%`,
   },
@@ -409,7 +413,7 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   heroSection: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 60,
   },
   logoContainer: {
@@ -419,9 +423,9 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: 60,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.3,
     shadowRadius: 20,
@@ -429,22 +433,22 @@ const styles = StyleSheet.create({
   },
   welcomeText: {
     fontSize: 20,
-    fontWeight: '400',
-    color: 'rgba(255, 255, 255, 0.9)',
+    fontWeight: "400",
+    color: "rgba(255, 255, 255, 0.9)",
     marginBottom: 8,
   },
   appName: {
     fontSize: 48,
-    fontWeight: '900',
-    color: 'white',
+    fontWeight: "900",
+    color: "white",
     letterSpacing: -2,
     marginBottom: 16,
   },
   tagline: {
     fontSize: 18,
-    fontWeight: '500',
-    color: 'rgba(255, 255, 255, 0.8)',
-    textAlign: 'center',
+    fontWeight: "500",
+    color: "rgba(255, 255, 255, 0.8)",
+    textAlign: "center",
     lineHeight: 26,
     paddingHorizontal: 20,
   },
@@ -453,9 +457,9 @@ const styles = StyleSheet.create({
   },
   featuresTitle: {
     fontSize: 24,
-    fontWeight: '700',
-    color: 'white',
-    textAlign: 'center',
+    fontWeight: "700",
+    color: "white",
+    textAlign: "center",
     marginBottom: 32,
     lineHeight: 30,
   },
@@ -463,34 +467,34 @@ const styles = StyleSheet.create({
     gap: 20,
   },
   featureCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    backgroundColor: "rgba(255, 255, 255, 0.15)",
     borderRadius: 20,
     padding: 24,
-    alignItems: 'center',
+    alignItems: "center",
     // backdropFilter: 'blur(10px)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderColor: "rgba(255, 255, 255, 0.2)",
   },
   featureCardIcon: {
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: 16,
   },
   featureCardTitle: {
     fontSize: 18,
-    fontWeight: '700',
-    color: 'white',
+    fontWeight: "700",
+    color: "white",
     marginBottom: 8,
-    textAlign: 'center',
+    textAlign: "center",
   },
   featureCardDescription: {
     fontSize: 15,
-    color: 'rgba(255, 255, 255, 0.8)',
-    textAlign: 'center',
+    color: "rgba(255, 255, 255, 0.8)",
+    textAlign: "center",
     lineHeight: 22,
   },
   benefitsSection: {
@@ -498,15 +502,15 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   benefitItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: 12,
   },
   benefitText: {
     fontSize: 16,
-    fontWeight: '600',
-    color: 'white',
+    fontWeight: "600",
+    color: "white",
   },
   ctaSection: {
     gap: 20,
@@ -514,42 +518,42 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     borderRadius: 16,
-    overflow: 'hidden',
-    shadowColor: '#000',
+    overflow: "hidden",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.3,
     shadowRadius: 16,
     elevation: 8,
   },
   buttonGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: 18,
     paddingHorizontal: 32,
     gap: 12,
   },
   primaryButtonText: {
     fontSize: 18,
-    fontWeight: '700',
-    color: '#667eea',
+    fontWeight: "700",
+    color: "#667eea",
   },
   secondaryButton: {
     paddingVertical: 16,
-    alignItems: 'center',
+    alignItems: "center",
   },
   secondaryButtonText: {
     fontSize: 16,
-    fontWeight: '600',
-    color: 'rgba(255, 255, 255, 0.9)',
+    fontWeight: "600",
+    color: "rgba(255, 255, 255, 0.9)",
   },
   footer: {
-    alignItems: 'center',
+    alignItems: "center",
     paddingTop: 20,
   },
   footerText: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.7)',
-    textAlign: 'center',
+    color: "rgba(255, 255, 255, 0.7)",
+    textAlign: "center",
   },
 });
