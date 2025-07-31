@@ -207,6 +207,7 @@ export default function HomeScreen() {
   const [selectedCategory, setSelectedCategory] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
   const [addModalVisible, setAddModalVisible] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const swipeableRefs = useRef<{ [key: string]: any }>({});
 
@@ -338,12 +339,27 @@ export default function HomeScreen() {
   };
 
   const filteredLinks = useMemo(() => {
-    if (filterCategory === "all") return links;
+    let filtered = links;
+
+    // Apply category filter
     if (filterCategory === "uncategorized") {
-      return links.filter((link) => !link.categoryId);
+      filtered = filtered.filter((link) => !link.categoryId);
+    } else if (filterCategory !== "all") {
+      filtered = filtered.filter((link) => link.categoryId === filterCategory);
     }
-    return links.filter((link) => link.categoryId === filterCategory);
-  }, [links, filterCategory]);
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      filtered = filtered.filter((link) =>
+        link.title.toLowerCase().includes(query) ||
+        link.url.toLowerCase().includes(query) ||
+        categories.find(cat => cat.id === link.categoryId)?.name.toLowerCase().includes(query)
+      );
+    }
+
+    return filtered;
+  }, [links, filterCategory, searchQuery, categories]);
 
   const renderLeftActions = (
     progress: Animated.AnimatedAddition<number>,
@@ -508,21 +524,32 @@ export default function HomeScreen() {
   const EmptyState = () => (
     <View style={styles.emptyContainer}>
       <View
-        style={[styles.emptyIcon, { backgroundColor: theme.colors.surface }]}
+        style={[
+          styles.emptyIcon,
+          { backgroundColor: theme.colors.surface },
+        ]}
       >
         <Ionicons
-          name="link-outline"
-          size={48}
+          name={searchQuery ? "search" : "link"}
+          size={32}
           color={theme.colors.textSecondary}
         />
       </View>
       <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>
-        No links yet
+        {searchQuery
+          ? "No links found"
+          : filterCategory === "all"
+          ? "No links yet"
+          : "No links in this category"}
       </Text>
       <Text
         style={[styles.emptySubtitle, { color: theme.colors.textSecondary }]}
       >
-        Add your first link to get started
+        {searchQuery
+          ? `No links match "${searchQuery}". Try a different search term.`
+          : filterCategory === "all"
+          ? "Tap the + button to add your first link"
+          : "Links in this category will appear here"}
       </Text>
     </View>
   );
@@ -575,7 +602,11 @@ export default function HomeScreen() {
                   { color: theme.colors.textSecondary },
                 ]}
               >
-                {links.length} saved links
+                {searchQuery
+                  ? `${filteredLinks.length} result${
+                      filteredLinks.length !== 1 ? "s" : ""
+                    } for "${searchQuery}"`
+                  : `${links.length} saved links`}
               </Text>
             </View>
             <TouchableOpacity
@@ -591,6 +622,56 @@ export default function HomeScreen() {
                 color={theme.colors.text}
               />
             </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Search Bar */}
+        <View
+          style={[
+            styles.searchSection,
+            {
+              backgroundColor: theme.colors.card,
+              borderBottomColor: theme.colors.border,
+            },
+          ]}
+        >
+          <View
+            style={[
+              styles.searchContainer,
+              {
+                backgroundColor: theme.colors.surface,
+                borderColor: theme.colors.border,
+              },
+            ]}
+          >
+            <Ionicons
+              name="search"
+              size={18}
+              color={theme.colors.textSecondary}
+              style={styles.searchIcon}
+            />
+            <TextInput
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              style={[styles.searchInput, { color: theme.colors.text }]}
+              placeholder="Search links, titles, or categories..."
+              placeholderTextColor={theme.colors.textSecondary}
+              autoCapitalize="none"
+              autoCorrect={false}
+              returnKeyType="search"
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity
+                onPress={() => setSearchQuery("")}
+                style={styles.clearSearchButton}
+              >
+                <Ionicons
+                  name="close-circle"
+                  size={18}
+                  color={theme.colors.textSecondary}
+                />
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 
@@ -1051,6 +1132,32 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 12,
     elevation: 8,
+  },
+
+  searchSection: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  searchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: "400",
+  },
+  clearSearchButton: {
+    marginLeft: 8,
+    padding: 2,
   },
 
   filterSection: {
