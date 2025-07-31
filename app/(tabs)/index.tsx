@@ -206,6 +206,7 @@ export default function HomeScreen() {
   const [categories, setCategories] = useState<any[]>([]);
   const [selectedCategory, setSelectedCategory] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
+  const [addModalVisible, setAddModalVisible] = useState(false);
 
   const swipeableRefs = useRef<{ [key: string]: any }>({});
 
@@ -285,6 +286,7 @@ export default function HomeScreen() {
       setNewLink("");
       setNewTitle("");
       setSelectedCategory("");
+      setAddModalVisible(false); // Close modal after adding
     } catch (error: any) {
       Alert.alert("Add Error", error.message);
     } finally {
@@ -699,107 +701,6 @@ export default function HomeScreen() {
           </ScrollView>
         </View>
 
-        {/* Add Section with Category Selector */}
-        <View
-          style={[
-            styles.addSection,
-            {
-              backgroundColor: theme.colors.card,
-              borderBottomColor: theme.colors.border,
-            },
-          ]}
-        >
-          <View style={styles.inputRow}>
-            <View
-              style={[
-                styles.inputWrapper,
-                {
-                  backgroundColor: theme.colors.surface,
-                  borderColor: theme.colors.border,
-                },
-              ]}
-            >
-              <Ionicons
-                name="bookmark-outline"
-                size={18}
-                color={theme.colors.textSecondary}
-                style={styles.inputIcon}
-              />
-              <TextInput
-                value={newTitle}
-                onChangeText={setNewTitle}
-                style={[styles.input, { color: theme.colors.text }]}
-                placeholder="Title (optional)"
-                placeholderTextColor={theme.colors.textSecondary}
-                autoCapitalize="words"
-                autoCorrect={true}
-                returnKeyType="next"
-              />
-            </View>
-
-            <CategorySelector
-              categories={categories}
-              selectedCategory={selectedCategory}
-              onCategoryChange={setSelectedCategory}
-              theme={theme}
-            />
-          </View>
-
-          <View style={styles.inputRow}>
-            <View
-              style={[
-                styles.inputWrapper,
-                {
-                  backgroundColor: theme.colors.surface,
-                  borderColor: theme.colors.border,
-                },
-              ]}
-            >
-              <Ionicons
-                name="link"
-                size={18}
-                color={theme.colors.textSecondary}
-                style={styles.inputIcon}
-              />
-              <TextInput
-                value={newLink}
-                onChangeText={setNewLink}
-                style={[styles.input, { color: theme.colors.text }]}
-                placeholder="Paste your link here"
-                placeholderTextColor={theme.colors.textSecondary}
-                autoCapitalize="none"
-                autoCorrect={false}
-                keyboardType="url"
-                returnKeyType="done"
-                onSubmitEditing={handleAddLink}
-              />
-            </View>
-            <TouchableOpacity
-              onPress={handleAddLink}
-              style={[
-                styles.addButton,
-                {
-                  backgroundColor: newLink.trim()
-                    ? theme.colors.primary
-                    : theme.colors.surface,
-                  opacity: adding ? 0.6 : 1,
-                },
-              ]}
-              disabled={adding || !newLink.trim()}
-            >
-              {adding ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Ionicons
-                  name="add"
-                  size={20}
-                  color={newLink.trim() ? "#fff" : theme.colors.textSecondary}
-                />
-              )}
-            </TouchableOpacity>
-          </View>
-        </View>
-
         {/* Links List */}
         <FlatList
           data={filteredLinks}
@@ -936,7 +837,157 @@ export default function HomeScreen() {
             </View>
           </View>
         </Modal>
+
+        {/* Add Link Modal */}
+        <Modal visible={addModalVisible} transparent animationType="slide">
+          <View style={styles.modalBackdrop}>
+            <TouchableOpacity
+              style={StyleSheet.absoluteFillObject}
+              activeOpacity={1}
+              onPress={() => setAddModalVisible(false)}
+            />
+            <View
+              style={[
+                styles.addModalContainer,
+                { backgroundColor: theme.colors.card },
+              ]}
+            >
+              <View style={styles.modalHeader}>
+                <Text style={[styles.modalTitle, { color: theme.colors.text }]}>
+                  Add New Link
+                </Text>
+                <TouchableOpacity
+                  onPress={() => setAddModalVisible(false)}
+                  style={styles.modalCloseButton}
+                >
+                  <Ionicons
+                    name="close"
+                    size={16}
+                    color={theme.colors.textSecondary}
+                  />
+                </TouchableOpacity>
+              </View>
+
+              <View
+                style={[
+                  styles.modalInputWrapper,
+                  {
+                    backgroundColor: theme.colors.surface,
+                    borderColor: theme.colors.border,
+                  },
+                ]}
+              >
+                <TextInput
+                  value={newTitle}
+                  onChangeText={setNewTitle}
+                  style={[styles.modalInput, { color: theme.colors.text }]}
+                  placeholder="Title (optional)"
+                  placeholderTextColor={theme.colors.textSecondary}
+                  autoCapitalize="words"
+                  autoCorrect={true}
+                  returnKeyType="next"
+                />
+              </View>
+
+              <CategorySelector
+                categories={categories}
+                selectedCategory={selectedCategory}
+                onCategoryChange={setSelectedCategory}
+                theme={theme}
+              />
+
+              <View
+                style={[
+                  styles.modalInputWrapper,
+                  {
+                    backgroundColor: theme.colors.surface,
+                    borderColor: theme.colors.border,
+                  },
+                ]}
+              >
+                <TextInput
+                  value={newLink}
+                  onChangeText={setNewLink}
+                  style={[styles.modalInput, { color: theme.colors.text }]}
+                  placeholder="Paste your link here"
+                  placeholderTextColor={theme.colors.textSecondary}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  keyboardType="url"
+                  returnKeyType="done"
+                  onSubmitEditing={handleAddLink}
+                />
+              </View>
+
+              <View style={styles.modalActions}>
+                <TouchableOpacity
+                  onPress={() => setAddModalVisible(false)}
+                  style={[
+                    styles.modalButton,
+                    styles.cancelButton,
+                    { backgroundColor: theme.colors.surface },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.cancelButtonText,
+                      { color: theme.colors.text },
+                    ]}
+                  >
+                    Cancel
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={handleAddLink}
+                  style={[
+                    styles.modalButton,
+                    styles.saveButton,
+                    {
+                      backgroundColor: newLink.trim()
+                        ? theme.colors.primary
+                        : theme.colors.surface,
+                      opacity: adding ? 0.6 : 1,
+                    },
+                  ]}
+                  disabled={adding || !newLink.trim()}
+                >
+                  {adding ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text
+                      style={[
+                        styles.saveButtonText,
+                        {
+                          color: newLink.trim()
+                            ? "#fff"
+                            : theme.colors.textSecondary,
+                        },
+                      ]}
+                    >
+                      Add Link
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </LinearGradient>
+
+      {/* Floating Add Button - OUTSIDE LinearGradient */}
+      <TouchableOpacity
+        style={[
+          styles.fab,
+          {
+            backgroundColor: theme.colors.primary,
+            shadowColor: theme.colors.primary,
+          },
+        ]}
+        onPress={() => setAddModalVisible(true)}
+        activeOpacity={0.8}
+      >
+        <Ionicons name="add" size={24} color="white" />
+      </TouchableOpacity>
     </KeyboardAvoidingView>
   );
 }
@@ -972,6 +1023,55 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     justifyContent: "center",
     alignItems: "center",
+  },
+
+  fab: {
+    position: "absolute",
+    bottom: 30,
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+    zIndex: 1000,
+  },
+
+  addModalContainer: {
+    width: "100%",
+    maxWidth: 340,
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+
+  filterSection: {
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  filterRow: {
+    flexDirection: "row",
+    gap: 8,
+    paddingHorizontal: 20,
+  },
+  filterChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  filterChipText: {
+    fontSize: 14,
+    fontWeight: "500",
   },
 
   addSection: {
@@ -1181,40 +1281,21 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
-  filterSection: {
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  filterRow: {
-    flexDirection: "row",
-    gap: 8,
-    paddingHorizontal: 20,
-  },
-  filterChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-  },
-  filterChipText: {
-    fontSize: 14,
-    fontWeight: "500",
-  },
+// CategorySelector styles
 });
 
-// CategorySelector styles - simplified and fixed
 const categoryStyles = StyleSheet.create({
   container: {
     position: "relative",
     minWidth: 120,
     maxWidth: 140,
+    marginBottom: 12,
   },
   button: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    height: 48,
+    height: 44,
     paddingHorizontal: 12,
     borderRadius: 12,
     borderWidth: 1,
@@ -1239,7 +1320,7 @@ const categoryStyles = StyleSheet.create({
   },
   dropdown: {
     position: "absolute",
-    top: 52,
+    top: 48,
     left: 0,
     right: 0,
     borderRadius: 8,
