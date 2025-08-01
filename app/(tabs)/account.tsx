@@ -90,7 +90,7 @@ export default function AccountScreen() {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     Alert.alert(
       "Sign Out",
       "Are you sure you want to sign out?",
@@ -102,6 +102,7 @@ export default function AccountScreen() {
           onPress: async () => {
             try {
               await signOut(auth);
+              // Redirect to login screen, not welcome
               router.replace("/(auth)/login");
             } catch (error: any) {
               Alert.alert("Error", "Failed to sign out. Please try again.");
