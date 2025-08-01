@@ -524,7 +524,7 @@ export default function AccountScreen() {
               icon="information-circle-outline"
               title="About"
               subtitle="App version and info"
-              onPress={() => Alert.alert("LinkSet", "Version 1.0.0\nBuilt with React Native")}
+              onPress={() => Alert.alert("LinkSet", "Version 1.0.0\nAuthor: Flames")}
             />
           </View>
 
