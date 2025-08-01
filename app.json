@@ -4,11 +4,11 @@
     "slug": "linkset",
     "version": "1.0.0",
     "splash": {
-      "image": "./assets/images/logo.png",
+      "image": "./assets/images/logo2.png",
       "resizeMode": "contain",
       "backgroundColor": "#4F46E5"
     },
-    "icon": "./assets/images/logo.png",
+    "icon": "./assets/images/logo2.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "ios": {
@@ -17,19 +17,28 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/images/logo2.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
       "package": "com.flames.linkset"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/images/logo1.png"
     },
     "scheme": "linkset",
-    "platforms": ["ios", "android", "web"],
+    "platforms": [
+      "ios",
+      "android",
+      "web"
+    ],
     "plugins": [
       "expo-web-browser"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "aef708ba-0a64-4a03-8b88-786d8fcb18c9"
+      }
+    }
   }
 }
