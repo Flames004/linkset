@@ -1163,7 +1163,7 @@ export default function AccountScreen() {
                           color="#fff" 
                           style={styles.buttonIcon}
                         />
-                        <Text style={styles.enhancedSaveButtonText}>Change Password</Text>
+                        <Text style={styles.enhancedSaveButtonText}>Change</Text>
                       </>
                     )}
                   </TouchableOpacity>
