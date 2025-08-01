@@ -12,12 +12,19 @@ import {
   TextInput,
   ActivityIndicator,
   Image,
+  KeyboardAvoidingView,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "@/context/ThemeContext";
 import { auth } from "@/services/firebase";
-import { signOut, updateProfile } from "firebase/auth";
+import { 
+  signOut, 
+  updateProfile, 
+  updatePassword, 
+  reauthenticateWithCredential, 
+  EmailAuthProvider 
+} from "firebase/auth";
 import { router } from "expo-router";
 import { collection, addDoc } from 'firebase/firestore';
 import { db } from '@/services/firebase';
@@ -63,7 +70,7 @@ export default function AccountScreen() {
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editedName, setEditedName] = useState(user?.displayName || "");
   const [selectedAvatar, setSelectedAvatar] = useState(
-    user?.photoURL || 'cat' // Changed default from 'person' to 'cat'
+    user?.photoURL || 'cat'
   );
   const [isUpdating, setIsUpdating] = useState(false);
 
@@ -72,6 +79,16 @@ export default function AccountScreen() {
   const [contactMessage, setContactMessage] = useState("");
   const [contactType, setContactType] = useState("feedback");
   const [isSendingContact, setIsSendingContact] = useState(false);
+
+  // Enhanced change password state variables
+  const [changePasswordModalVisible, setChangePasswordModalVisible] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleLogout = () => {
     Alert.alert(
@@ -85,8 +102,6 @@ export default function AccountScreen() {
           onPress: async () => {
             try {
               await signOut(auth);
-              // The AuthContext will automatically handle navigation to login
-              // due to the onAuthStateChanged listener
               router.replace("/(auth)/login");
             } catch (error: any) {
               Alert.alert("Error", "Failed to sign out. Please try again.");
@@ -210,19 +225,17 @@ export default function AccountScreen() {
     );
   };
 
-  // Function to save profile updates (much simpler now)
+  // Function to save profile updates
   const saveProfile = async () => {
     if (!user) return;
     
     setIsUpdating(true);
     try {
-      // Update Firebase Auth profile with avatar ID
       await updateProfile(user, {
         displayName: editedName.trim() || user.displayName,
-        photoURL: selectedAvatar, // Store avatar ID instead of image URL
+        photoURL: selectedAvatar,
       });
       
-      // Force refresh the user to get updated data
       await user.reload();
       
       Alert.alert("Success", "Profile updated successfully!");
@@ -245,7 +258,6 @@ export default function AccountScreen() {
 
     setIsSendingContact(true);
     try {
-      // Save to Firestore
       await addDoc(collection(db, 'feedback'), {
         userId: user?.uid,
         userEmail: user?.email,
@@ -275,6 +287,89 @@ export default function AccountScreen() {
       Alert.alert("Error", "Failed to send message. Please try again.");
     } finally {
       setIsSendingContact(false);
+    }
+  };
+
+  // Enhanced password change function
+  const changePassword = async () => {
+    if (!user) return;
+
+    // Validation
+    if (!currentPassword.trim()) {
+      Alert.alert("Error", "Please enter your current password.");
+      return;
+    }
+
+    if (!newPassword.trim()) {
+      Alert.alert("Error", "Please enter a new password.");
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      Alert.alert("Error", "New password must be at least 6 characters long.");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      Alert.alert("Error", "New passwords don't match.");
+      return;
+    }
+
+    if (currentPassword === newPassword) {
+      Alert.alert("Error", "New password must be different from current password.");
+      return;
+    }
+
+    setIsChangingPassword(true);
+    try {
+      // Re-authenticate user with current password
+      const credential = EmailAuthProvider.credential(
+        user.email!,
+        currentPassword
+      );
+      
+      await reauthenticateWithCredential(user, credential);
+      
+      // Update password
+      await updatePassword(user, newPassword);
+      
+      Alert.alert(
+        "Success", 
+        "Password changed successfully!",
+        [{ 
+          text: "OK", 
+          onPress: () => {
+            setChangePasswordModalVisible(false);
+            setCurrentPassword("");
+            setNewPassword("");
+            setConfirmPassword("");
+          }
+        }]
+      );
+      
+    } catch (error: any) {
+      console.error("Password change error:", error);
+      
+      let errorMessage = "Failed to change password. Please try again.";
+      
+      switch (error.code) {
+        case 'auth/wrong-password':
+          errorMessage = "Current password is incorrect.";
+          break;
+        case 'auth/weak-password':
+          errorMessage = "New password is too weak. Please choose a stronger password.";
+          break;
+        case 'auth/requires-recent-login':
+          errorMessage = "Please sign out and sign back in before changing your password.";
+          break;
+        case 'auth/too-many-requests':
+          errorMessage = "Too many failed attempts. Please try again later.";
+          break;
+      }
+      
+      Alert.alert("Error", errorMessage);
+    } finally {
+      setIsChangingPassword(false);
     }
   };
 
@@ -377,7 +472,12 @@ export default function AccountScreen() {
               icon="lock-closed-outline"
               title="Change Password"
               subtitle="Update your account password"
-              onPress={() => Alert.alert("Coming Soon", "Password change will be available soon")}
+              onPress={() => {
+                setCurrentPassword("");
+                setNewPassword("");
+                setConfirmPassword("");
+                setChangePasswordModalVisible(true);
+              }}
             />
           </View>
 
@@ -501,7 +601,7 @@ export default function AccountScreen() {
                       <Image
                         source={animal.image}
                         style={{
-                          width: 50, // Adjusted to fit new container
+                          width: 50,
                           height: 50,
                         }}
                         resizeMode="cover"
@@ -763,6 +863,315 @@ export default function AccountScreen() {
             </View>
           </View>
         </Modal>
+
+        {/* Enhanced Change Password Modal */}
+        <Modal visible={changePasswordModalVisible} transparent animationType="slide">
+          <View style={styles.modalBackdrop}>
+            <TouchableOpacity
+              style={StyleSheet.absoluteFillObject}
+              activeOpacity={1}
+              onPress={() => setChangePasswordModalVisible(false)}
+            />
+            <KeyboardAvoidingView
+              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+              style={styles.keyboardAvoidingView}
+            >
+              <View
+                style={[
+                  styles.changePasswordModalContainer,
+                  { backgroundColor: theme.colors.card },
+                ]}
+              >
+                <View style={styles.modalHeader}>
+                  <Text style={[styles.modalTitle, { color: theme.colors.text }]}>
+                    Change Password
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => setChangePasswordModalVisible(false)}
+                    style={styles.modalCloseButton}
+                  >
+                    <Ionicons
+                      name="close"
+                      size={20}
+                      color={theme.colors.textSecondary}
+                    />
+                  </TouchableOpacity>
+                </View>
+
+                <ScrollView 
+                  showsVerticalScrollIndicator={false}
+                  keyboardShouldPersistTaps="handled"
+                  contentContainerStyle={styles.scrollModalContent}
+                >
+                  {/* Security Notice */}
+                  <View style={styles.securityNotice}>
+                    <View style={styles.securityIconContainer}>
+                      <Ionicons name="shield-checkmark" size={24} color="#22C55E" />
+                    </View>
+                    <View style={styles.securityTextContainer}>
+                      <Text style={[styles.securityTitle, { color: theme.colors.text }]}>
+                        Secure Password Change
+                      </Text>
+                      <Text style={[styles.securityDescription, { color: theme.colors.textSecondary }]}>
+                        For your security, please enter your current password to verify your identity.
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Current Password Input */}
+                  <View style={styles.inputSection}>
+                    <Text style={[styles.inputLabel, { color: theme.colors.text }]}>
+                      Current Password
+                    </Text>
+                    <View
+                      style={[
+                        styles.stablePasswordInputWrapper,
+                        {
+                          backgroundColor: theme.colors.surface,
+                          borderColor: theme.colors.border,
+                        },
+                      ]}
+                    >
+                      <TextInput
+                        value={currentPassword}
+                        onChangeText={setCurrentPassword}
+                        style={[styles.stablePasswordInput, { color: theme.colors.text }]}
+                        placeholder="Enter your current password"
+                        placeholderTextColor={theme.colors.textSecondary}
+                        secureTextEntry={!showCurrentPassword}
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        autoComplete="current-password"
+                        textContentType="password"
+                        returnKeyType="next"
+                        blurOnSubmit={false}
+                      />
+                      <TouchableOpacity
+                        onPress={() => setShowCurrentPassword(!showCurrentPassword)}
+                        style={styles.stablePasswordToggle}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons
+                          name={showCurrentPassword ? "eye-off-outline" : "eye-outline"}
+                          size={20}
+                          color={theme.colors.textSecondary}
+                        />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+
+                  {/* New Password Input */}
+                  <View style={styles.inputSection}>
+                    <Text style={[styles.inputLabel, { color: theme.colors.text }]}>
+                      New Password
+                    </Text>
+                    <View
+                      style={[
+                        styles.stablePasswordInputWrapper,
+                        {
+                          backgroundColor: theme.colors.surface,
+                          borderColor: theme.colors.border,
+                        },
+                      ]}
+                    >
+                      <TextInput
+                        value={newPassword}
+                        onChangeText={setNewPassword}
+                        style={[styles.stablePasswordInput, { color: theme.colors.text }]}
+                        placeholder="Enter new password (min. 6 characters)"
+                        placeholderTextColor={theme.colors.textSecondary}
+                        secureTextEntry={!showNewPassword}
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        autoComplete="new-password"
+                        textContentType="newPassword"
+                        returnKeyType="next"
+                        blurOnSubmit={false}
+                      />
+                      <TouchableOpacity
+                        onPress={() => setShowNewPassword(!showNewPassword)}
+                        style={styles.stablePasswordToggle}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons
+                          name={showNewPassword ? "eye-off-outline" : "eye-outline"}
+                          size={20}
+                          color={theme.colors.textSecondary}
+                        />
+                      </TouchableOpacity>
+                    </View>
+                    {newPassword.length > 0 && newPassword.length < 6 && (
+                      <View style={styles.validationContainer}>
+                        <Ionicons name="warning-outline" size={14} color="#F59E0B" />
+                        <Text style={styles.passwordHint}>
+                          Password must be at least 6 characters
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+
+                  {/* Confirm Password Input */}
+                  <View style={styles.inputSection}>
+                    <Text style={[styles.inputLabel, { color: theme.colors.text }]}>
+                      Confirm New Password
+                    </Text>
+                    <View
+                      style={[
+                        styles.stablePasswordInputWrapper,
+                        {
+                          backgroundColor: theme.colors.surface,
+                          borderColor: theme.colors.border,
+                        },
+                      ]}
+                    >
+                      <TextInput
+                        value={confirmPassword}
+                        onChangeText={setConfirmPassword}
+                        style={[styles.stablePasswordInput, { color: theme.colors.text }]}
+                        placeholder="Confirm your new password"
+                        placeholderTextColor={theme.colors.textSecondary}
+                        secureTextEntry={!showConfirmPassword}
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        autoComplete="new-password"
+                        textContentType="newPassword"
+                        returnKeyType="done"
+                        onSubmitEditing={changePassword}
+                      />
+                      <TouchableOpacity
+                        onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                        style={styles.stablePasswordToggle}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons
+                          name={showConfirmPassword ? "eye-off-outline" : "eye-outline"}
+                          size={20}
+                          color={theme.colors.textSecondary}
+                        />
+                      </TouchableOpacity>
+                    </View>
+                    {confirmPassword.length > 0 && newPassword !== confirmPassword && (
+                      <View style={styles.validationContainer}>
+                        <Ionicons name="close-circle-outline" size={14} color="#EF4444" />
+                        <Text style={styles.passwordError}>
+                          Passwords don't match
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+
+                  {/* Enhanced Password Requirements */}
+                  <View style={[styles.passwordRequirements, { backgroundColor: theme.colors.surface }]}>
+                    <Text style={[styles.requirementsTitle, { color: theme.colors.text }]}>
+                      Password Requirements:
+                    </Text>
+                    <View style={styles.requirementsList}>
+                      <View style={styles.requirementItem}>
+                        <Ionicons 
+                          name={newPassword.length >= 6 ? "checkmark-circle" : "ellipse-outline"} 
+                          size={16} 
+                          color={newPassword.length >= 6 ? "#22C55E" : theme.colors.textSecondary} 
+                        />
+                        <Text style={[
+                          styles.requirementText, 
+                          { 
+                            color: newPassword.length >= 6 ? "#22C55E" : theme.colors.textSecondary 
+                          }
+                        ]}>
+                          At least 6 characters
+                        </Text>
+                      </View>
+                      <View style={styles.requirementItem}>
+                        <Ionicons 
+                          name={newPassword !== currentPassword && newPassword.length > 0 ? "checkmark-circle" : "ellipse-outline"} 
+                          size={16} 
+                          color={newPassword !== currentPassword && newPassword.length > 0 ? "#22C55E" : theme.colors.textSecondary} 
+                        />
+                        <Text style={[
+                          styles.requirementText, 
+                          { 
+                            color: newPassword !== currentPassword && newPassword.length > 0 ? "#22C55E" : theme.colors.textSecondary 
+                          }
+                        ]}>
+                          Different from current password
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                </ScrollView>
+
+                {/* Enhanced Action Buttons */}
+                <View style={styles.enhancedModalActions}>
+                  <TouchableOpacity
+                    onPress={() => setChangePasswordModalVisible(false)}
+                    style={[
+                      styles.enhancedButton,
+                      styles.enhancedCancelButton,
+                      { 
+                        backgroundColor: theme.colors.surface,
+                        borderColor: theme.colors.border,
+                      },
+                    ]}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons 
+                      name="close-outline" 
+                      size={18} 
+                      color={theme.colors.text} 
+                      style={styles.buttonIcon}
+                    />
+                    <Text style={[styles.enhancedCancelButtonText, { color: theme.colors.text }]}>
+                      Cancel
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={changePassword}
+                    style={[
+                      styles.enhancedButton,
+                      styles.enhancedSaveButton,
+                      {
+                        backgroundColor: theme.colors.primary,
+                        opacity: isChangingPassword || 
+                          !currentPassword || 
+                          !newPassword || 
+                          !confirmPassword || 
+                          newPassword !== confirmPassword || 
+                          newPassword.length < 6 ? 0.5 : 1,
+                      },
+                    ]}
+                    disabled={
+                      isChangingPassword || 
+                      !currentPassword || 
+                      !newPassword || 
+                      !confirmPassword || 
+                      newPassword !== confirmPassword || 
+                      newPassword.length < 6
+                    }
+                    activeOpacity={0.8}
+                  >
+                    {isChangingPassword ? (
+                      <>
+                        <ActivityIndicator size="small" color="#fff" style={styles.buttonIcon} />
+                        <Text style={styles.enhancedSaveButtonText}>Changing...</Text>
+                      </>
+                    ) : (
+                      <>
+                        <Ionicons 
+                          name="shield-checkmark-outline" 
+                          size={18} 
+                          color="#fff" 
+                          style={styles.buttonIcon}
+                        />
+                        <Text style={styles.enhancedSaveButtonText}>Change Password</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </KeyboardAvoidingView>
+          </View>
+        </Modal>
       </LinearGradient>
     </View>
   );
@@ -824,15 +1233,15 @@ const styles = StyleSheet.create({
   },
   avatarScrollContent: {
     paddingHorizontal: 16,
-    gap: 8, // Reduced gap for more avatars
+    gap: 8,
   },
   avatarOption: {
-    width: 54, // Slightly smaller
+    width: 54,
     height: 54,
     borderRadius: 27,
     justifyContent: 'center',
     alignItems: 'center',
-    marginHorizontal: 2, // Reduced margin
+    marginHorizontal: 2,
     position: 'relative',
   },
   animalEmoji: {
@@ -923,13 +1332,18 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 
-  /* Edit Profile Modal Styles */
+  /* Modal Styles */
   modalBackdrop: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.5)',
     paddingHorizontal: 24,
+  },
+  keyboardAvoidingView: {
+    width: '100%',
+    maxWidth: 400,
+    justifyContent: 'center',
   },
   editModalContainer: {
     width: '100%',
@@ -1009,7 +1423,7 @@ const styles = StyleSheet.create({
     color: 'white',
   },
 
-  /* Contact Us Modal Styles */
+  /* Contact Modal Styles */
   contactModalContainer: {
     width: '100%',
     maxWidth: 400,
@@ -1060,5 +1474,169 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '400',
     minHeight: 80,
+  },
+
+  /* Enhanced Change Password Modal Styles */
+  changePasswordModalContainer: {
+    width: '100%',
+    maxWidth: 400,
+    maxHeight: '90%',
+    borderRadius: 16,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  scrollModalContent: {
+    flexGrow: 1,
+  },
+  securityNotice: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(34, 197, 94, 0.1)',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(34, 197, 94, 0.2)',
+  },
+  securityIconContainer: {
+    marginRight: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  securityTextContainer: {
+    flex: 1,
+  },
+  securityTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  securityDescription: {
+    fontSize: 12,
+    lineHeight: 16,
+  },
+
+  /* Stable Password Input Styles */
+  stablePasswordInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 12,
+    borderWidth: 1.5,
+    paddingHorizontal: 16,
+    height: 52,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  stablePasswordInput: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '400',
+    paddingVertical: 0,
+    textAlignVertical: 'center',
+  },
+  stablePasswordToggle: {
+    padding: 8,
+    marginLeft: 4,
+    borderRadius: 6,
+  },
+
+  /* Enhanced Validation Styles */
+  validationContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 6,
+    marginLeft: 4,
+    gap: 6,
+  },
+  passwordHint: {
+    fontSize: 12,
+    color: '#F59E0B',
+    fontWeight: '500',
+  },
+  passwordError: {
+    fontSize: 12,
+    color: '#EF4444',
+    fontWeight: '500',
+  },
+
+  /* Enhanced Password Requirements */
+  passwordRequirements: {
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.08)',
+  },
+  requirementsTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 10,
+    letterSpacing: 0.3,
+  },
+  requirementsList: {
+    gap: 8,
+  },
+  requirementItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  requirementText: {
+    fontSize: 13,
+    fontWeight: '500',
+    letterSpacing: 0.2,
+  },
+
+  /* Enhanced Button Styles */
+  enhancedModalActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 20,
+    paddingTop: 20,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.1)',
+  },
+  enhancedButton: {
+    flex: 1,
+    height: 52,
+    borderRadius: 14,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  enhancedCancelButton: {
+    borderWidth: 1.5,
+  },
+  enhancedSaveButton: {
+    shadowColor: '#4F46E5',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  buttonIcon: {
+    marginRight: 8,
+  },
+  enhancedCancelButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    letterSpacing: 0.3,
+  },
+  enhancedSaveButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: 'white',
+    letterSpacing: 0.3,
   },
 });
