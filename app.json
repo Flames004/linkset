@@ -13,28 +13,49 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.flames.linkset"
+      "bundleIdentifier": "com.flames.linkset",
+      "infoPlist": {
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLName": "linkset.share",
+            "CFBundleURLSchemes": ["linkset"]
+          }
+        ]
+      }
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/logo2.png",
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./assets/images/logo2.png"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.flames.linkset"
+      "package": "com.flames.linkset",
+      "intentFilters": [
+        {
+          "action": "android.intent.action.SEND",
+          "category": ["android.intent.category.DEFAULT"],
+          "data": [
+            {
+              "mimeType": "text/plain"
+            }
+          ]
+        },
+        {
+          "action": "android.intent.action.SEND",
+          "category": ["android.intent.category.DEFAULT"],
+          "data": [
+            {
+              "mimeType": "text/*"
+            }
+          ]
+        }
+      ]
     },
     "web": {
       "favicon": "./assets/images/logo1.png"
     },
     "scheme": "linkset",
-    "platforms": [
-      "ios",
-      "android",
-      "web"
-    ],
-    "plugins": [
-      "expo-web-browser"
-    ],
+    "platforms": ["ios", "android", "web"],
+    "plugins": ["expo-web-browser"],
     "extra": {
       "eas": {
         "projectId": "aef708ba-0a64-4a03-8b88-786d8fcb18c9"

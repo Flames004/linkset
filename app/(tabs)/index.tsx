@@ -33,6 +33,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "@/context/ThemeContext";
 import { LinearGradient } from "expo-linear-gradient";
 import { Picker } from "@react-native-picker/picker";
+import { useShareHandler } from '@/hooks/useShareHandler';
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -208,8 +209,10 @@ export default function HomeScreen() {
   const [filterCategory, setFilterCategory] = useState("all");
   const [addModalVisible, setAddModalVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isSharedLink, setIsSharedLink] = useState(false);
 
   const swipeableRefs = useRef<{ [key: string]: any }>({});
+  const { sharedContent, clearSharedContent } = useShareHandler();
 
   useEffect(() => {
     const uid = auth.currentUser?.uid;
@@ -259,6 +262,29 @@ export default function HomeScreen() {
     return unsubscribe;
   }, []);
 
+  useEffect(() => {
+    if (sharedContent) {
+      console.log('Shared content received:', sharedContent);
+      
+      // Pre-fill the add link modal with shared content
+      if (sharedContent.url) {
+        setNewLink(sharedContent.url);
+      } else if (sharedContent.text) {
+        setNewLink(sharedContent.text);
+      }
+      
+      if (sharedContent.title) {
+        setNewTitle(sharedContent.title);
+      }
+      
+      setIsSharedLink(true);
+      setAddModalVisible(true); // Open the modal automatically
+      
+      // Clear shared content after processing
+      clearSharedContent();
+    }
+  }, [sharedContent]);
+
   const handleDelete = async (id: string) => {
     const uid = auth.currentUser?.uid;
     if (!uid) return;
@@ -283,11 +309,23 @@ export default function HomeScreen() {
         categoryId: selectedCategory || null,
         createdAt: now,
         updatedAt: now,
+        isShared: isSharedLink, // Track if this was shared from another app
       });
+      
       setNewLink("");
       setNewTitle("");
       setSelectedCategory("");
-      setAddModalVisible(false); // Close modal after adding
+      setIsSharedLink(false); // Reset shared state
+      setAddModalVisible(false);
+      
+      // Show success message for shared links
+      if (isSharedLink) {
+        Alert.alert(
+          "Link Saved! 🎉",
+          "Your shared link has been successfully added to LinkSet.",
+          [{ text: "Great!" }]
+        );
+      }
     } catch (error: any) {
       Alert.alert("Add Error", error.message);
     } finally {
@@ -1388,7 +1426,17 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
-// CategorySelector styles
+  // Shared link banner styles
+  sharedBanner: {
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+    alignItems: 'center',
+  },
+  sharedBannerText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
 });
 
 const categoryStyles = StyleSheet.create({
