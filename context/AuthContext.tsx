@@ -2,8 +2,6 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { onAuthStateChanged, User } from "firebase/auth";
 import { auth } from "@/services/firebase";
-import { router } from "expo-router";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 
 interface AuthContextType {
   user: User | null;
@@ -22,15 +20,30 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      console.log("Auth state changed:", user ? "User logged in" : "User logged out");
-      setUser(user);
-      setIsLoading(false);
+    console.log("🔥 Auth Context: Setting up auth listener");
 
-      // Don't redirect here - let individual screens handle navigation
-    });
+    const unsubscribe = onAuthStateChanged(
+      auth,
+      (user) => {
+        console.log("🔥 Auth State Changed:", user ? "USER FOUND" : "NO USER");
+        console.log(
+          "🔥 User details:",
+          user ? { uid: user.uid, email: user.email } : "null"
+        );
 
-    return unsubscribe;
+        setUser(user);
+        setIsLoading(false);
+      },
+      (error) => {
+        console.error("🔥 Auth State Change Error:", error);
+        setIsLoading(false);
+      }
+    );
+
+    return () => {
+      console.log("🔥 Auth Context: Cleaning up auth listener");
+      unsubscribe();
+    };
   }, []);
 
   const value = {
@@ -39,7 +52,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     isAuthenticated: !!user,
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+  );
 };
 
 export const useAuth = () => {

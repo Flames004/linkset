@@ -9,6 +9,9 @@ import {
   Alert,
   Modal,
   FlatList,
+  ActivityIndicator,
+  Platform,
+  StatusBar
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
@@ -23,6 +26,8 @@ import {
   updateDoc,
   query,
   orderBy,
+  getDocs,
+  where,
 } from "firebase/firestore";
 
 interface Category {
@@ -40,21 +45,57 @@ const CATEGORY_COLORS = [
   "#FF9500", // Orange
   "#FFCC00", // Yellow
   "#34C759", // Green
+  "#07740c", // Dark Green
   "#5856D6", // Purple
+  "#000981", // Dark Blue
   "#AF52DE", // Magenta
   "#FF2D92", // Pink
   "#5AC8FA", // Light Blue
-  "#FF6B35"  // Orange Red (replacing duplicate)
+  "#FF6B35", // Orange Red (replacing duplicate)
+  "#2b2b2b", // Dark Gray
+  "#d4d4d4"  // Light Gray
 ];
 
-const CATEGORY_ICONS = [
-  "folder", "bookmark", "star", "heart", "briefcase", 
-  "school", "home", "car", "restaurant", "game-controller",
-  "library", "fitness", "musical-notes", "camera", "gift",
-  "airplane", "medical", "leaf", "bulb", "trophy",
-  "shield", "code", "wallet", "map", "time",
-  "build", "notifications", "person", "call", "mail"
-];
+const ICON_CATEGORIES = {
+  "Social Media": [
+    "logo-instagram", "logo-youtube", "logo-twitter", "logo-facebook",
+    "logo-linkedin", "logo-github", "logo-whatsapp",
+    "logo-reddit", "logo-pinterest", "logo-snapchat"
+  ],
+  "Work & Business": [
+    "briefcase", "business", "laptop",
+    "code-slash", "bar-chart"
+  ],
+  "Entertainment": [
+    "musical-notes", "headset", "videocam", "camera",
+    "game-controller", "mic"
+  ],
+  "Shopping": [
+    "card", "pricetag",
+    "gift", "cart"
+  ],
+  "Health & Fitness": [
+    "barbell-sharp", "heart", "bicycle", "medkit"
+  ],
+  "Travel": [
+    "airplane", "car", "home",
+    "compass", "location", "globe"
+  ],
+  "Food & Dining": [
+    "restaurant", "cafe", "wine", "pizza",
+  ],
+  "Personal": [
+    "person", "star", "bookmark",
+    "time", "calendar", "alarm", "mail",
+  ],
+  "Utilities": [
+    "folder", "checkmark",
+    "search", "settings", "build","bulb", "cloud", "partly-sunny"
+  ]
+};
+
+// Flatten for the picker
+const CATEGORY_ICONS = Object.values(ICON_CATEGORIES).flat();
 
 export default function CategoriesScreen() {
   const { theme, isDark } = useTheme();
@@ -70,6 +111,7 @@ export default function CategoriesScreen() {
     const uid = auth.currentUser?.uid;
     if (!uid) return;
 
+    // ✅ Separate listeners instead of nested ones
     const categoriesQuery = query(
       collection(db, "users", uid, "categories"),
       orderBy("createdAt", "desc")
@@ -79,32 +121,41 @@ export default function CategoriesScreen() {
       collection(db, "users", uid, "links")
     );
 
-    // Listen to categories
-    const unsubscribeCategories = onSnapshot(categoriesQuery, (categoriesSnapshot) => {
-      // Listen to links to count them
-      const unsubscribeLinks = onSnapshot(linksQuery, (linksSnapshot) => {
-        const links = linksSnapshot.docs.map(doc => doc.data());
-        
-        const categoriesWithCount = categoriesSnapshot.docs.map((doc) => {
-          const categoryData = doc.data();
-          const linkCount = links.filter(link => link.categoryId === doc.id).length;
-          
-          return {
-            id: doc.id,
-            ...categoryData,
-            createdAt: categoryData.createdAt?.toDate() || new Date(),
-            linkCount,
-          };
-        }) as Category[];
-        
-        setCategories(categoriesWithCount);
-        setLoading(false);
-      });
+    let categoriesData: any[] = [];
+    let linksData: any[] = [];
 
-      return () => unsubscribeLinks();
+    // Listen to categories
+    const unsubscribeCategories = onSnapshot(categoriesQuery, (snapshot) => {
+      categoriesData = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate() || new Date(),
+      }));
+      updateCategoriesWithCount();
     });
 
-    return unsubscribeCategories;
+    // Listen to links separately
+    const unsubscribeLinks = onSnapshot(linksQuery, (snapshot) => {
+      linksData = snapshot.docs.map(doc => doc.data());
+      updateCategoriesWithCount();
+    });
+
+    // ✅ Combine data efficiently
+    const updateCategoriesWithCount = () => {
+      const categoriesWithCount = categoriesData.map((category) => {
+        const linkCount = linksData.filter(link => link.categoryId === category.id).length;
+        return { ...category, linkCount };
+      });
+      
+      setCategories(categoriesWithCount);
+      setLoading(false);
+    };
+
+    // ✅ Clean up both listeners
+    return () => {
+      unsubscribeCategories();
+      unsubscribeLinks();
+    };
   }, []);
 
   const handleSaveCategory = async () => {
@@ -145,26 +196,90 @@ export default function CategoriesScreen() {
   const handleDeleteCategory = async (categoryId: string) => {
     Alert.alert(
       "Delete Category",
-      "This will remove the category from all links. This action cannot be undone.",
+      "What should happen to links in this category?",
       [
         { text: "Cancel", style: "cancel" },
         {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            const uid = auth.currentUser?.uid;
-            if (!uid) return;
-
-            try {
-              await deleteDoc(doc(db, "users", uid, "categories", categoryId));
-              // TODO: Update all links that use this category
-            } catch (error: any) {
-              Alert.alert("Error", error.message);
-            }
-          },
+          text: "Remove Category Only",
+          onPress: () => deleteCategoryAndUncategorizeLinks(categoryId),
+        },
+        {
+          text: "Delete Category & Links",
+          style: "destructive", 
+          onPress: () => deleteCategoryAndAllLinks(categoryId),
         },
       ]
     );
+  };
+
+  const deleteCategoryAndUncategorizeLinks = async (categoryId: string) => {
+    const uid = auth.currentUser?.uid;
+    if (!uid) return;
+
+    try {
+      // Delete the category
+      await deleteDoc(doc(db, "users", uid, "categories", categoryId));
+      
+      // ✅ Update all links that use this category
+      const linksQuery = query(collection(db, "users", uid, "links"));
+      const linksSnapshot = await getDocs(linksQuery);
+      
+      const updatePromises: Promise<void>[] = [];
+      
+      linksSnapshot.forEach((linkDoc) => {
+        const linkData = linkDoc.data();
+        if (linkData.categoryId === categoryId) {
+          // Remove categoryId from links that used this category
+          const updatePromise = updateDoc(linkDoc.ref, {
+            categoryId: null,
+            updatedAt: new Date(),
+          });
+          updatePromises.push(updatePromise);
+        }
+      });
+      
+      // Wait for all link updates to complete
+      if (updatePromises.length > 0) {
+        await Promise.all(updatePromises);
+        console.log(`✅ Updated ${updatePromises.length} links that used this category`);
+      }
+      
+    } catch (error: any) {
+      Alert.alert("Error", error.message);
+    }
+  };
+
+  const deleteCategoryAndAllLinks = async (categoryId: string) => {
+    const uid = auth.currentUser?.uid;
+    if (!uid) return;
+
+    try {
+      // Delete all links in this category first
+      const linksQuery = query(
+        collection(db, "users", uid, "links"),
+        where("categoryId", "==", categoryId)
+      );
+      const linksSnapshot = await getDocs(linksQuery);
+
+      const deletePromises: Promise<void>[] = [];
+      linksSnapshot.forEach((linkDoc) => {
+        const deletePromise = deleteDoc(linkDoc.ref);
+        deletePromises.push(deletePromise);
+      });
+
+      // Wait for all links to be deleted
+      if (deletePromises.length > 0) {
+        await Promise.all(deletePromises);
+        console.log(`✅ Deleted ${deletePromises.length} links associated with the category`);
+      }
+
+      // Now delete the category
+      await deleteDoc(doc(db, "users", uid, "categories", categoryId));
+      Alert.alert("Success", "Category and associated links deleted");
+      
+    } catch (error: any) {
+      Alert.alert("Error", error.message);
+    }
   };
 
   const openEditModal = (category?: Category) => {
@@ -286,59 +401,64 @@ export default function CategoriesScreen() {
     </View>
   );
 
+  const statusBarHeight = Platform.OS === 'android' ? StatusBar.currentHeight || 0 : 44;
+
   return (
     <LinearGradient
       colors={isDark ? ["#000000", "#1C1C1E"] : ["#FAFAFA", "#F2F2F7"]}
-      style={styles.container}
+      style={[styles.container, { paddingTop: statusBarHeight }]}
     >
-      {/* Header */}
-      <View
-        style={[
-          styles.header,
-          {
-            backgroundColor: theme.colors.card,
-            borderBottomColor: theme.colors.border,
-          },
-        ]}
-      >
-        <Text style={[styles.headerTitle, { color: theme.colors.text }]}>
-          Categories
-        </Text>
+      {/* ✅ Updated Header with Category Count */}
+      <View style={[styles.header, { borderBottomColor: theme.colors.border }]}>
+        <View style={styles.headerContent}>
+          <Text style={[styles.headerTitle, { color: theme.colors.text }]}>
+            Categories
+          </Text>
+          <Text style={[styles.categoryCount, { color: theme.colors.textSecondary }]}>
+            {categories.length} {categories.length === 1 ? 'category' : 'categories'}
+          </Text>
+        </View>
         <TouchableOpacity
           onPress={() => openEditModal()}
-          style={[
-            styles.addButton,
-            { backgroundColor: theme.colors.primary },
-          ]}
+          style={[styles.addButton, { backgroundColor: theme.colors.primary }]}
         >
-          <Ionicons name="add" size={20} color="white" />
+          <Ionicons name="add" size={24} color="white" />
         </TouchableOpacity>
       </View>
 
-      {/* Categories List */}
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {categories.map((category) => (
-          <CategoryCard key={category.id} category={category} />
-        ))}
-        
-        {categories.length === 0 && (
-          <View style={styles.emptyState}>
-            <Ionicons
-              name="folder-outline"
-              size={64}
-              color={theme.colors.textSecondary}
-            />
-            <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>
-              No Categories Yet
-            </Text>
-            <Text
-              style={[styles.emptySubtitle, { color: theme.colors.textSecondary }]}
-            >
-              Create categories to organize your links
-            </Text>
-          </View>
-        )}
-      </ScrollView>
+      {/* Rest of your existing content */}
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <Text style={[styles.loadingText, { color: theme.colors.textSecondary }]}>
+            Loading categories...
+          </Text>
+        </View>
+      ) : (
+        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+          {categories.map((category) => (
+            <CategoryCard key={category.id} category={category} />
+          ))}
+          
+          {categories.length === 0 && (
+            <View style={styles.emptyState}>
+              <Ionicons
+                name="folder-outline"
+                size={64}
+                color={theme.colors.textSecondary}
+              />
+              <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>
+                No Categories Yet
+              </Text>
+              <Text
+                style={[styles.emptySubtitle, { color: theme.colors.textSecondary }]}
+              >
+                Create categories to organize your links
+              </Text>
+            </View>
+          )}
+        </ScrollView>
+      )}
 
       {/* Category Modal */}
       <Modal visible={modalVisible} transparent animationType="slide">
@@ -380,7 +500,7 @@ export default function CategoriesScreen() {
                     },
                   ]}
                   placeholder="Enter category name"
-                  placeholderTextColor={theme.colors.textSecondary}
+                  placeholderTextColor={isDark ? "#8E8E93" : "#999999"}
                   maxLength={20}
                 />
               </View>
@@ -461,15 +581,24 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingTop: 50,
+    paddingTop: 20,
     paddingBottom: 16,
     paddingHorizontal: 20,
     borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  headerContent: {
+    flex: 1,
   },
   headerTitle: {
     fontSize: 28,
     fontWeight: "700",
     letterSpacing: -0.5,
+  },
+  categoryCount: {
+    fontSize: 14,
+    fontWeight: "500",
+    marginTop: 2,
+    opacity: 0.8,
   },
   addButton: {
     width: 40,
@@ -512,9 +641,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     marginBottom: 4,
-  },
-  categoryCount: {
-    fontSize: 14,
   },
   deleteButton: {
     padding: 8,
@@ -657,5 +783,16 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     color: "white",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  loadingText: {
+    marginTop: 8,
+    fontSize: 16,
+    fontWeight: "500",
   },
 });

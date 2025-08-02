@@ -25,7 +25,8 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/logo2.png"
+        "foregroundImage": "./assets/images/logo2.png",
+        "backgroundColor": "#00000000"
       },
       "edgeToEdgeEnabled": true,
       "package": "com.flames.linkset",
@@ -37,7 +38,8 @@
             {
               "mimeType": "text/plain"
             }
-          ]
+          ],
+          "autoVerify": true
         },
         {
           "action": "android.intent.action.SEND",
@@ -47,6 +49,22 @@
               "mimeType": "text/*"
             }
           ]
+        },
+        {
+          "action": "android.intent.action.SEND",
+          "category": ["android.intent.category.DEFAULT"],
+          "data": [
+            {
+              "mimeType": "*/*"
+            }
+          ]
+        }
+      ],
+      "activities": [
+        {
+          "name": ".MainActivity",
+          "exported": true,
+          "launchMode": "singleTop"
         }
       ]
     },

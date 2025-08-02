@@ -20,6 +20,7 @@ import { useGoogleAuth } from "@/services/googleAuth";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "@/context/ThemeContext";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
@@ -28,6 +29,7 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const { promptAsync, request } = useGoogleAuth();
   const { theme, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
 
   const handleLogin = async () => {
     if (!email.trim() || !password) {
@@ -67,10 +69,19 @@ export default function LoginScreen() {
 
       <LinearGradient
         colors={isDark ? ["#000000", "#1C1C1E"] : ["#FAFAFA", "#F2F2F7"]}
-        style={styles.container}
+        style={[
+          styles.container, 
+          { 
+            paddingTop: insets.top,
+            paddingBottom: insets.bottom
+          }
+        ]}
       >
         <ScrollView
-          contentContainerStyle={styles.scrollContainer}
+          contentContainerStyle={[
+            styles.scrollContainer,
+            { paddingBottom: Math.max(insets.bottom, 20) }
+          ]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >

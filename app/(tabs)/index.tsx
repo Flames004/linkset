@@ -33,7 +33,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "@/context/ThemeContext";
 import { LinearGradient } from "expo-linear-gradient";
 import { Picker } from "@react-native-picker/picker";
-import { useShareHandler } from '@/hooks/useShareHandler';
+import { useShareHandler } from "@/hooks/useShareHandler";
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -84,10 +84,7 @@ const CategorySelector = ({
                 />
               </View>
               <Text
-                style={[
-                  categoryStyles.text,
-                  { color: theme.colors.text },
-                ]}
+                style={[categoryStyles.text, { color: theme.colors.text }]}
                 numberOfLines={1}
               >
                 {selectedCat.name}
@@ -210,6 +207,7 @@ export default function HomeScreen() {
   const [addModalVisible, setAddModalVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSharedLink, setIsSharedLink] = useState(false);
+  const [showSuccessToast, setShowSuccessToast] = useState(false);
 
   const swipeableRefs = useRef<{ [key: string]: any }>({});
   const { sharedContent, clearSharedContent } = useShareHandler();
@@ -264,22 +262,22 @@ export default function HomeScreen() {
 
   useEffect(() => {
     if (sharedContent) {
-      console.log('Shared content received:', sharedContent);
-      
+      console.log("Shared content received:", sharedContent);
+
       // Pre-fill the add link modal with shared content
       if (sharedContent.url) {
         setNewLink(sharedContent.url);
       } else if (sharedContent.text) {
         setNewLink(sharedContent.text);
       }
-      
+
       if (sharedContent.title) {
         setNewTitle(sharedContent.title);
       }
-      
+
       setIsSharedLink(true);
       setAddModalVisible(true); // Open the modal automatically
-      
+
       // Clear shared content after processing
       clearSharedContent();
     }
@@ -309,22 +307,18 @@ export default function HomeScreen() {
         categoryId: selectedCategory || null,
         createdAt: now,
         updatedAt: now,
-        isShared: isSharedLink, // Track if this was shared from another app
+        isShared: isSharedLink,
       });
-      
+
       setNewLink("");
       setNewTitle("");
       setSelectedCategory("");
-      setIsSharedLink(false); // Reset shared state
+      setIsSharedLink(false);
       setAddModalVisible(false);
-      
-      // Show success message for shared links
+
       if (isSharedLink) {
-        Alert.alert(
-          "Link Saved! 🎉",
-          "Your shared link has been successfully added to LinkSet.",
-          [{ text: "Great!" }]
-        );
+        setShowSuccessToast(true);
+        setTimeout(() => setShowSuccessToast(false), 3000);
       }
     } catch (error: any) {
       Alert.alert("Add Error", error.message);
@@ -376,6 +370,16 @@ export default function HomeScreen() {
     setEditedTitle("");
   };
 
+  // Update your modal close function
+  const closeAddModal = () => {
+    // Clear all form data when closing modal
+    setNewLink("");
+    setNewTitle("");
+    setSelectedCategory("");
+    setIsSharedLink(false); // Clear shared state
+    setAddModalVisible(false);
+  };
+
   const filteredLinks = useMemo(() => {
     let filtered = links;
 
@@ -389,10 +393,14 @@ export default function HomeScreen() {
     // Apply search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
-      filtered = filtered.filter((link) =>
-        link.title.toLowerCase().includes(query) ||
-        link.url.toLowerCase().includes(query) ||
-        categories.find(cat => cat.id === link.categoryId)?.name.toLowerCase().includes(query)
+      filtered = filtered.filter(
+        (link) =>
+          link.title.toLowerCase().includes(query) ||
+          link.url.toLowerCase().includes(query) ||
+          categories
+            .find((cat) => cat.id === link.categoryId)
+            ?.name.toLowerCase()
+            .includes(query)
       );
     }
 
@@ -496,7 +504,10 @@ export default function HomeScreen() {
         rightThreshold={40}
       >
         <TouchableOpacity
-          onPress={() => Linking.openURL(item.url)}
+          onPress={() => {
+            const url = item.url.startsWith('http') ? item.url : `https://${item.url}`;
+            Linking.openURL(url);
+          }}
           style={[
             styles.linkCard,
             {
@@ -562,10 +573,7 @@ export default function HomeScreen() {
   const EmptyState = () => (
     <View style={styles.emptyContainer}>
       <View
-        style={[
-          styles.emptyIcon,
-          { backgroundColor: theme.colors.surface },
-        ]}
+        style={[styles.emptyIcon, { backgroundColor: theme.colors.surface }]}
       >
         <Ionicons
           name={searchQuery ? "search" : "link"}
@@ -605,11 +613,10 @@ export default function HomeScreen() {
     );
   }
 
+  const statusBarHeight = Platform.OS === 'android' ? StatusBar.currentHeight || 0 : 44;
+
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-    >
+    <KeyboardAvoidingView style={{ flex: 1 }}>
       <StatusBar
         barStyle={isDark ? "light-content" : "dark-content"}
         backgroundColor={theme.colors.background}
@@ -617,7 +624,7 @@ export default function HomeScreen() {
 
       <LinearGradient
         colors={isDark ? ["#000000", "#1C1C1E"] : ["#FAFAFA", "#F2F2F7"]}
-        style={styles.container}
+        style={[styles.container, { paddingTop: statusBarHeight }]}
       >
         {/* Header */}
         <View
@@ -976,7 +983,7 @@ export default function HomeScreen() {
                   Add New Link
                 </Text>
                 <TouchableOpacity
-                  onPress={() => setAddModalVisible(false)}
+                  onPress={closeAddModal}
                   style={styles.modalCloseButton}
                 >
                   <Ionicons
@@ -1040,7 +1047,7 @@ export default function HomeScreen() {
 
               <View style={styles.modalActions}>
                 <TouchableOpacity
-                  onPress={() => setAddModalVisible(false)}
+                  onPress={closeAddModal}
                   style={[
                     styles.modalButton,
                     styles.cancelButton,
@@ -1107,6 +1114,33 @@ export default function HomeScreen() {
       >
         <Ionicons name="add" size={24} color="white" />
       </TouchableOpacity>
+
+      {/* Toast for shared link success */}
+      {showSuccessToast && (
+        <View
+          style={{
+            position: "absolute",
+            top: 60,
+            left: 20,
+            right: 20,
+            backgroundColor: "#10B981",
+            padding: 15,
+            borderRadius: 10,
+            flexDirection: "row",
+            alignItems: "center",
+            zIndex: 9999,
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.1,
+            shadowRadius: 4,
+            elevation: 5,
+          }}
+        >
+          <Text style={{ color: "white", fontSize: 16, fontWeight: "600" }}>
+            🎉 Link saved successfully!
+          </Text>
+        </View>
+      )}
     </KeyboardAvoidingView>
   );
 }
@@ -1431,11 +1465,11 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 8,
     marginBottom: 16,
-    alignItems: 'center',
+    alignItems: "center",
   },
   sharedBannerText: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });
 

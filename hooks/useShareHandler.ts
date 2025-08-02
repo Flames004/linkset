@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import * as Linking from 'expo-linking';
-import * as IntentLauncher from 'expo-intent-launcher';
 
 interface SharedContent {
   url?: string;
@@ -33,22 +32,33 @@ export const useShareHandler = () => {
     try {
       console.log('Received URL:', url);
       
-      // For Android intent data
-      if (url.includes('linkset://share')) {
+      // Handle Android share intent URLs
+      if (url.startsWith('linkset://')) {
         const parsed = Linking.parse(url);
         const { queryParams } = parsed;
         
-        if (queryParams?.url || queryParams?.text) {
-          setSharedContent({
-            url: queryParams.url as string,
-            title: queryParams.title as string,
-            text: queryParams.text as string,
-          });
+        // Extract shared content from query parameters
+        if (queryParams) {
+          const content: SharedContent = {};
+          
+          // Check for URL in different parameter names
+          if (queryParams.url) content.url = queryParams.url as string;
+          if (queryParams.text) content.text = queryParams.text as string;
+          if (queryParams.title) content.title = queryParams.title as string;
+          
+          // Sometimes text contains the URL
+          if (!content.url && content.text && isValidUrl(content.text)) {
+            content.url = content.text;
+          }
+          
+          if (content.url || content.text) {
+            setSharedContent(content);
+          }
         }
       }
       
-      // Direct URL sharing
-      if (url.startsWith('http://') || url.startsWith('https://')) {
+      // Handle direct URL sharing (backup)
+      else if (isValidUrl(url)) {
         setSharedContent({
           url: url,
           title: '',
@@ -57,6 +67,15 @@ export const useShareHandler = () => {
       }
     } catch (error) {
       console.error('Error parsing shared content:', error);
+    }
+  };
+
+  const isValidUrl = (string: string): boolean => {
+    try {
+      new URL(string);
+      return true;
+    } catch {
+      return false;
     }
   };
 

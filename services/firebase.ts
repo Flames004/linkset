@@ -1,7 +1,8 @@
 // services/firebase.ts
-import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { initializeApp } from "firebase/app";
+import { initializeAuth, getAuth, getReactNativePersistence, Auth } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const firebaseConfig = {
   apiKey: process.env.FIREBASE_API_KEY,
@@ -14,6 +15,16 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 
-// Modern Firebase automatically handles persistence in React Native/Expo
-export const auth = getAuth(app);
+let auth: Auth;
+
+try {
+  auth = initializeAuth(app, {
+    persistence: getReactNativePersistence(AsyncStorage),
+  });
+} catch (error) {
+  auth = getAuth(app);
+}
+
+export { auth };
 export const db = getFirestore(app);
+export default app;

@@ -374,6 +374,8 @@ export default function AccountScreen() {
     }
   };
 
+  const statusBarHeight = Platform.OS === 'android' ? StatusBar.currentHeight || 0 : 44;
+
   return (
     <View style={{ flex: 1 }}>
       <StatusBar
@@ -383,7 +385,7 @@ export default function AccountScreen() {
 
       <LinearGradient
         colors={isDark ? ["#000000", "#1C1C1E"] : ["#FAFAFA", "#F2F2F7"]}
-        style={styles.container}
+        style={[styles.container, { paddingTop: statusBarHeight }]}
       >
         {/* Header */}
         <View

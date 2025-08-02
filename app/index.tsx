@@ -9,17 +9,20 @@ import OnboardingScreen from '@/components/OnboardingScreen';
 
 export default function IndexScreen() {
   const [isLoading, setIsLoading] = useState(true);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
   useEffect(() => {
     let isMounted = true;
 
-    // Direct auth listener (not wrapped in async function)
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       try {
         if (!isMounted) return;
 
+        console.log('🔥 Index: Auth state changed:', user ? 'LOGGED IN' : 'NOT LOGGED IN');
+
         if (user) {
           // User is authenticated, go to main app
+          console.log('🔥 Index: Redirecting to tabs');
           router.replace('/(tabs)');
         } else {
           // User not authenticated, check onboarding
@@ -27,16 +30,19 @@ export default function IndexScreen() {
           
           if (hasSeenOnboarding === 'true') {
             // User has seen onboarding, go to login
+            console.log('🔥 Index: Redirecting to login');
             router.replace('/(auth)/login');
           } else {
             // First time user, show onboarding
+            console.log('🔥 Index: Showing onboarding');
             if (isMounted) {
               setIsLoading(false);
+              setIsCheckingAuth(false);
             }
           }
         }
       } catch (error) {
-        console.error('Error during initialization:', error);
+        console.error('🔥 Index: Error during auth check:', error);
         if (isMounted) {
           router.replace('/(auth)/login');
         }
@@ -60,7 +66,7 @@ export default function IndexScreen() {
     }
   };
 
-  if (isLoading) {
+  if (isLoading || isCheckingAuth) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#007AFF" />
